@@ -43,13 +43,13 @@ const PromosGrid = () => {
   ];
 
   return (
-    <section className="py-16 bg-gray-50">
+    <section className="py-16 bg-meetpedia-light">
       <div className="max-w-7xl mx-auto px-4">
         <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-travel-navy mb-4 font-inter">
+          <h2 className="text-3xl font-bold text-meetpedia-secondary mb-4 font-inter">
             More ways to save and explore
           </h2>
-          <p className="text-lg text-travel-gray">
+          <p className="text-lg text-meetpedia-secondary/70">
             Discover deals, earn rewards, and make the most of your travel budget
           </p>
         </div>
@@ -69,19 +69,19 @@ const PromosGrid = () => {
               </div>
               
               <div className="p-6">
-                <h3 className="font-semibold text-travel-navy mb-1 font-inter">
+                <h3 className="font-semibold text-meetpedia-secondary mb-1 font-inter">
                   {promo.title}
                 </h3>
-                <h4 className="text-travel-blue font-medium mb-3">
+                <h4 className="text-meetpedia-primary font-medium mb-3">
                   {promo.subtitle}
                 </h4>
-                <p className="text-travel-gray text-sm mb-4 leading-relaxed">
+                <p className="text-meetpedia-secondary/70 text-sm mb-4 leading-relaxed">
                   {promo.description}
                 </p>
                 <Button 
                   variant="outline" 
                   size="sm"
-                  className="border-travel-blue text-travel-blue hover:bg-travel-blue hover:text-white w-full"
+                  className="border-meetpedia-primary text-meetpedia-primary hover:bg-meetpedia-primary hover:text-white w-full focus:ring-2 focus:ring-meetpedia-accent focus:ring-dashed"
                 >
                   {promo.cta}
                 </Button>

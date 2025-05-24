@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { MapPin, ChevronDown, MessageCircle, Menu, X } from 'lucide-react';
+import { ChevronDown, MessageCircle, Menu, X } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,24 +12,24 @@ const Header = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
-    <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
+    <header className="bg-white border-b border-meetpedia-border sticky top-0 z-50">
       {/* Top bar */}
-      <div className="bg-gray-50 py-2">
+      <div className="bg-meetpedia-light py-2">
         <div className="max-w-7xl mx-auto px-4 flex justify-between items-center text-sm">
           <div className="flex items-center gap-4">
-            <span className="text-travel-gray">Get the app</span>
+            <span className="text-meetpedia-secondary">Get the app</span>
           </div>
           <div className="flex items-center gap-4">
             <DropdownMenu>
-              <DropdownMenuTrigger className="flex items-center gap-1 text-travel-gray hover:text-travel-navy transition-colors">
+              <DropdownMenuTrigger className="flex items-center gap-1 text-meetpedia-secondary hover:text-meetpedia-primary transition-colors focus:outline-none focus:ring-2 focus:ring-meetpedia-accent focus:ring-dashed">
                 USD
                 <ChevronDown className="h-3 w-3" />
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="bg-white border shadow-lg">
+              <DropdownMenuContent className="bg-white border shadow-lg z-50">
                 <div className="p-2">
-                  <div className="py-2 px-3 hover:bg-gray-50 cursor-pointer">USD - US Dollar</div>
-                  <div className="py-2 px-3 hover:bg-gray-50 cursor-pointer">EUR - Euro</div>
-                  <div className="py-2 px-3 hover:bg-gray-50 cursor-pointer">GBP - British Pound</div>
+                  <div className="py-2 px-3 hover:bg-meetpedia-light cursor-pointer rounded">USD - US Dollar</div>
+                  <div className="py-2 px-3 hover:bg-meetpedia-light cursor-pointer rounded">EUR - Euro</div>
+                  <div className="py-2 px-3 hover:bg-meetpedia-light cursor-pointer rounded">GBP - British Pound</div>
                 </div>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -41,29 +41,34 @@ const Header = () => {
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <div className="flex items-center gap-2">
-            <MapPin className="h-6 w-6 text-travel-blue" />
-            <span className="text-xl font-semibold text-travel-navy font-inter">TravelNow</span>
+          <div className="flex items-center">
+            <a href="/" className="flex items-center">
+              <img 
+                src="/public/images/8161b190-9101-4789-8086-015601e5a6b9.png" 
+                alt="Meetpedia Travel" 
+                className="h-10 lg:h-10 md:h-8 w-auto object-contain"
+              />
+            </a>
           </div>
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-8">
             <DropdownMenu>
-              <DropdownMenuTrigger className="flex items-center gap-1 text-travel-navy hover:text-travel-blue transition-colors font-medium">
+              <DropdownMenuTrigger className="flex items-center gap-1 text-meetpedia-secondary hover:text-meetpedia-primary transition-colors font-medium focus:outline-none focus:ring-2 focus:ring-meetpedia-accent focus:ring-dashed">
                 Shop travel
                 <ChevronDown className="h-4 w-4" />
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="bg-white border shadow-lg w-96 p-4">
+              <DropdownMenuContent className="bg-white border shadow-lg w-96 p-4 z-50">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <div className="py-2 px-3 hover:bg-gray-50 cursor-pointer rounded">Stays</div>
-                    <div className="py-2 px-3 hover:bg-gray-50 cursor-pointer rounded">Flights</div>
-                    <div className="py-2 px-3 hover:bg-gray-50 cursor-pointer rounded">Cars</div>
+                    <div className="py-2 px-3 hover:bg-meetpedia-light cursor-pointer rounded text-meetpedia-secondary hover:text-meetpedia-primary">Stays</div>
+                    <div className="py-2 px-3 hover:bg-meetpedia-light cursor-pointer rounded text-meetpedia-secondary hover:text-meetpedia-primary">Flights</div>
+                    <div className="py-2 px-3 hover:bg-meetpedia-light cursor-pointer rounded text-meetpedia-secondary hover:text-meetpedia-primary">Cars</div>
                   </div>
                   <div className="space-y-2">
-                    <div className="py-2 px-3 hover:bg-gray-50 cursor-pointer rounded">Packages</div>
-                    <div className="py-2 px-3 hover:bg-gray-50 cursor-pointer rounded">Things to Do</div>
-                    <div className="py-2 px-3 hover:bg-gray-50 cursor-pointer rounded">Cruises</div>
+                    <div className="py-2 px-3 hover:bg-meetpedia-light cursor-pointer rounded text-meetpedia-secondary hover:text-meetpedia-primary">Packages</div>
+                    <div className="py-2 px-3 hover:bg-meetpedia-light cursor-pointer rounded text-meetpedia-secondary hover:text-meetpedia-primary">Things to Do</div>
+                    <div className="py-2 px-3 hover:bg-meetpedia-light cursor-pointer rounded text-meetpedia-secondary hover:text-meetpedia-primary">Cruises</div>
                   </div>
                 </div>
               </DropdownMenuContent>
@@ -72,17 +77,17 @@ const Header = () => {
 
           {/* Right side navigation */}
           <div className="hidden md:flex items-center gap-6">
-            <a href="#" className="text-travel-gray hover:text-travel-navy transition-colors text-sm">
+            <a href="#" className="text-meetpedia-secondary hover:text-meetpedia-primary transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-meetpedia-accent focus:ring-dashed">
               List your property
             </a>
-            <a href="#" className="text-travel-gray hover:text-travel-navy transition-colors text-sm">
+            <a href="#" className="text-meetpedia-secondary hover:text-meetpedia-primary transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-meetpedia-accent focus:ring-dashed">
               Support
             </a>
-            <a href="#" className="text-travel-gray hover:text-travel-navy transition-colors text-sm">
+            <a href="#" className="text-meetpedia-secondary hover:text-meetpedia-primary transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-meetpedia-accent focus:ring-dashed">
               Trips
             </a>
-            <MessageCircle className="h-5 w-5 text-travel-gray hover:text-travel-navy cursor-pointer transition-colors" />
-            <Button variant="outline" className="border-travel-blue text-travel-blue hover:bg-travel-blue hover:text-white transition-all">
+            <MessageCircle className="h-5 w-5 text-meetpedia-secondary hover:text-meetpedia-primary cursor-pointer transition-colors" />
+            <Button variant="outline" className="border-meetpedia-primary text-meetpedia-primary hover:bg-meetpedia-primary hover:text-white transition-all focus:ring-2 focus:ring-meetpedia-accent focus:ring-dashed">
               Sign in
             </Button>
           </div>
@@ -93,7 +98,7 @@ const Header = () => {
               variant="ghost"
               size="sm"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="text-travel-navy"
+              className="text-meetpedia-secondary"
             >
               {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </Button>
@@ -102,24 +107,24 @@ const Header = () => {
 
         {/* Mobile menu */}
         {isMobileMenuOpen && (
-          <div className="md:hidden py-4 border-t border-gray-200 animate-fade-in">
+          <div className="md:hidden py-4 border-t border-meetpedia-border animate-fade-in">
             <div className="space-y-4">
               <div className="py-2">
-                <div className="font-medium text-travel-navy mb-2">Shop travel</div>
+                <div className="font-medium text-meetpedia-secondary mb-2">Shop travel</div>
                 <div className="ml-4 space-y-2 text-sm">
-                  <div className="py-1 text-travel-gray">Stays</div>
-                  <div className="py-1 text-travel-gray">Flights</div>
-                  <div className="py-1 text-travel-gray">Cars</div>
-                  <div className="py-1 text-travel-gray">Packages</div>
-                  <div className="py-1 text-travel-gray">Things to Do</div>
-                  <div className="py-1 text-travel-gray">Cruises</div>
+                  <div className="py-1 text-meetpedia-secondary">Stays</div>
+                  <div className="py-1 text-meetpedia-secondary">Flights</div>
+                  <div className="py-1 text-meetpedia-secondary">Cars</div>
+                  <div className="py-1 text-meetpedia-secondary">Packages</div>
+                  <div className="py-1 text-meetpedia-secondary">Things to Do</div>
+                  <div className="py-1 text-meetpedia-secondary">Cruises</div>
                 </div>
               </div>
               <div className="space-y-3 pt-2">
-                <a href="#" className="block text-travel-gray text-sm">List your property</a>
-                <a href="#" className="block text-travel-gray text-sm">Support</a>
-                <a href="#" className="block text-travel-gray text-sm">Trips</a>
-                <Button variant="outline" className="w-full border-travel-blue text-travel-blue">
+                <a href="#" className="block text-meetpedia-secondary text-sm">List your property</a>
+                <a href="#" className="block text-meetpedia-secondary text-sm">Support</a>
+                <a href="#" className="block text-meetpedia-secondary text-sm">Trips</a>
+                <Button variant="outline" className="w-full border-meetpedia-primary text-meetpedia-primary">
                   Sign in
                 </Button>
               </div>

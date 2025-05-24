@@ -63,11 +63,14 @@ export default {
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
 				},
-				// Travel booking brand colors
-				'travel-navy': '#071737',
-				'travel-blue': '#2164FF',
-				'travel-light-blue': '#D9E6F6',
-				'travel-gray': '#6B7280'
+				// Meetpedia brand colors extracted from logo
+				'meetpedia-primary': '#1E5F99',      // Deep blue from airplane icon
+				'meetpedia-secondary': '#2B2B2B',    // Dark gray from wordmark
+				'meetpedia-accent': '#4A8BC2',       // Lighter blue accent (+20% brightness)
+				'meetpedia-light': '#F7F9FC',        // Subtle neutral background
+				'meetpedia-orange': '#FF6B35',       // Orange accent from logo
+				'meetpedia-success': '#10B981',      // Success green
+				'meetpedia-border': 'rgba(0,0,0,0.06)' // Light border
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
