@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
+import { Link } from 'react-router-dom';
 
 const PromosGrid = () => {
   const promos = [
@@ -11,7 +12,8 @@ const PromosGrid = () => {
       description: "Book flight + hotel together and save more than booking separately",
       background: "bg-yellow-100",
       image: "https://images.unsplash.com/photo-1618160702438-9b02ab6515c9?w=400&h=200&fit=crop",
-      cta: "Explore packages"
+      cta: "Explore packages",
+      link: "/explore-packages"
     },
     {
       id: 2,
@@ -20,7 +22,8 @@ const PromosGrid = () => {
       description: "Book now and get refunded if prices drop before your trip",
       background: "bg-blue-50",
       image: "https://images.unsplash.com/photo-1472396961693-142e6e269027?w=400&h=200&fit=crop",
-      cta: "Search flights"
+      cta: "Search flights",
+      link: "/search-flights"
     },
     {
       id: 3,
@@ -29,7 +32,8 @@ const PromosGrid = () => {
       description: "Earn rewards on every booking that you can use for future trips",
       background: "bg-green-50",
       image: "https://images.unsplash.com/photo-1466721591366-2d5fba72006d?w=400&h=200&fit=crop",
-      cta: "Learn more"
+      cta: "Learn more",
+      link: "/one-key-rewards"
     },
     {
       id: 4,
@@ -38,7 +42,8 @@ const PromosGrid = () => {
       description: "Change or cancel plans up to 24 hours before departure",
       background: "bg-purple-50",
       image: "https://images.unsplash.com/photo-1518877593221-1f28583780b4?w=400&h=200&fit=crop",
-      cta: "Browse cruises"
+      cta: "Browse cruises",
+      link: "/browse-cruises"
     }
   ];
 
@@ -56,9 +61,10 @@ const PromosGrid = () => {
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {promos.map((promo) => (
-            <div
+            <Link
               key={promo.id}
-              className={`${promo.background} rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer group`}
+              to={promo.link}
+              className={`${promo.background} rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer group block`}
             >
               <div className="aspect-video overflow-hidden">
                 <img
@@ -86,7 +92,7 @@ const PromosGrid = () => {
                   {promo.cta}
                 </Button>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       </div>

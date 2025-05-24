@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ChevronDown, MessageCircle, Menu, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -42,13 +43,13 @@ const Header = () => {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <div className="flex items-center">
-            <a href="/" className="flex items-center">
+            <Link to="/" className="flex items-center">
               <img 
                 src="/public/images/8161b190-9101-4789-8086-015601e5a6b9.png" 
                 alt="Meetpedia Travel" 
                 className="h-10 lg:h-10 md:h-8 w-auto object-contain"
               />
-            </a>
+            </Link>
           </div>
 
           {/* Desktop Navigation */}
@@ -61,14 +62,14 @@ const Header = () => {
               <DropdownMenuContent className="bg-white border shadow-lg w-96 p-4 z-50">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <div className="py-2 px-3 hover:bg-meetpedia-light cursor-pointer rounded text-meetpedia-secondary hover:text-meetpedia-primary">Stays</div>
-                    <div className="py-2 px-3 hover:bg-meetpedia-light cursor-pointer rounded text-meetpedia-secondary hover:text-meetpedia-primary">Flights</div>
+                    <Link to="/" className="block py-2 px-3 hover:bg-meetpedia-light cursor-pointer rounded text-meetpedia-secondary hover:text-meetpedia-primary">Stays</Link>
+                    <Link to="/search-flights" className="block py-2 px-3 hover:bg-meetpedia-light cursor-pointer rounded text-meetpedia-secondary hover:text-meetpedia-primary">Flights</Link>
                     <div className="py-2 px-3 hover:bg-meetpedia-light cursor-pointer rounded text-meetpedia-secondary hover:text-meetpedia-primary">Cars</div>
                   </div>
                   <div className="space-y-2">
-                    <div className="py-2 px-3 hover:bg-meetpedia-light cursor-pointer rounded text-meetpedia-secondary hover:text-meetpedia-primary">Packages</div>
+                    <Link to="/explore-packages" className="block py-2 px-3 hover:bg-meetpedia-light cursor-pointer rounded text-meetpedia-secondary hover:text-meetpedia-primary">Packages</Link>
                     <div className="py-2 px-3 hover:bg-meetpedia-light cursor-pointer rounded text-meetpedia-secondary hover:text-meetpedia-primary">Things to Do</div>
-                    <div className="py-2 px-3 hover:bg-meetpedia-light cursor-pointer rounded text-meetpedia-secondary hover:text-meetpedia-primary">Cruises</div>
+                    <Link to="/browse-cruises" className="block py-2 px-3 hover:bg-meetpedia-light cursor-pointer rounded text-meetpedia-secondary hover:text-meetpedia-primary">Cruises</Link>
                   </div>
                 </div>
               </DropdownMenuContent>
@@ -112,12 +113,12 @@ const Header = () => {
               <div className="py-2">
                 <div className="font-medium text-meetpedia-secondary mb-2">Shop travel</div>
                 <div className="ml-4 space-y-2 text-sm">
-                  <div className="py-1 text-meetpedia-secondary">Stays</div>
-                  <div className="py-1 text-meetpedia-secondary">Flights</div>
+                  <Link to="/" className="block py-1 text-meetpedia-secondary">Stays</Link>
+                  <Link to="/search-flights" className="block py-1 text-meetpedia-secondary">Flights</Link>
                   <div className="py-1 text-meetpedia-secondary">Cars</div>
-                  <div className="py-1 text-meetpedia-secondary">Packages</div>
+                  <Link to="/explore-packages" className="block py-1 text-meetpedia-secondary">Packages</Link>
                   <div className="py-1 text-meetpedia-secondary">Things to Do</div>
-                  <div className="py-1 text-meetpedia-secondary">Cruises</div>
+                  <Link to="/browse-cruises" className="block py-1 text-meetpedia-secondary">Cruises</Link>
                 </div>
               </div>
               <div className="space-y-3 pt-2">
