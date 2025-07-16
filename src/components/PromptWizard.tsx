@@ -203,61 +203,40 @@ const PromptWizard = ({ onComplete }: PromptWizardProps) => {
     try {
       console.log('Starting generation process with data:', promptData);
 
-      // First process the prompt and create job entry
+      // Process the prompt and create job entry
       const result = await processPrompt(promptData);
       console.log('Prompt processed, job created:', result);
 
       if (!result || !result.jobId) {
-        throw new Error('Failed to create generation job');
+        throw new Error('Failed to create generation job. Please try again.');
       }
 
-      // Enhance the prompt with GPT-4 and start 3D generation in background
-      const enhanceAndGenerate = async () => {
-        try {
-          console.log('Enhancing prompt with GPT-4...');
-          const { data: enhanceData, error: enhanceError } = await supabase.functions.invoke('enhance-prompt', {
-            body: { promptData }
-          });
-
-          if (enhanceError) {
-            console.warn('Prompt enhancement failed, using original:', enhanceError);
-          }
-
-          const enhancedPrompt = enhanceData?.enhancedPrompt || promptData.description;
-          console.log('Prompt enhanced, starting 3D generation...');
-
-          // Start 3D generation process
-          const { data: generateData, error: generateError } = await supabase.functions.invoke('generate-3d-model', {
-            body: { 
-              jobId: result.jobId,
-              enhancedPrompt 
-            }
-          });
-
-          if (generateError) {
-            console.error('3D generation failed:', generateError);
-          } else {
-            console.log('3D generation started successfully:', generateData);
-          }
-        } catch (error) {
-          console.error('Background generation process failed:', error);
-        }
-      };
-
-      // Start the enhancement and generation process in the background
-      enhanceAndGenerate();
-      
       toast({
         title: "Generation Started!",
-        description: "Your 3D model is being generated with AI enhancement.",
+        description: "Your 3D model is being generated. Check the history tab to track progress.",
       });
       
       onComplete(promptData);
+      
     } catch (error: any) {
       console.error('Error processing prompt:', error);
+      
+      // Provide more specific error messages
+      let errorMessage = "Failed to process your request";
+      
+      if (error.message?.includes('Failed to process prompt')) {
+        errorMessage = "Unable to process your request. Please check your connection and try again.";
+      } else if (error.message?.includes('Unauthorized')) {
+        errorMessage = "Authentication error. Please sign out and sign back in.";
+      } else if (error.message?.includes('schema')) {
+        errorMessage = "Server configuration error. Please contact support.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
-        title: "Error",
-        description: error.message || "Failed to process your request",
+        title: "Generation Failed",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {

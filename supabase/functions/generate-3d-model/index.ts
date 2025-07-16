@@ -24,15 +24,12 @@ serve(async (req) => {
     console.log('Starting 3D generation for job:', jobId);
     console.log('Enhanced prompt:', enhancedPrompt.substring(0, 200) + '...');
 
-    // Update job to processing status
-    const { error: updateError } = await supabaseClient
-      .schema('t3d')
-      .from('jobs')
-      .update({ 
-        status: 'processing',
-        progress: 10
-      })
-      .eq('id', jobId);
+    // Update job to processing status using secure function
+    const { error: updateError } = await supabaseClient.rpc('update_job_status', {
+      p_job_id: jobId,
+      p_status: 'processing',
+      p_progress: 10
+    });
 
     if (updateError) {
       throw new Error(`Failed to update job status: ${updateError.message}`);
@@ -48,12 +45,12 @@ serve(async (req) => {
       // Simulate processing time
       await new Promise(resolve => setTimeout(resolve, 2000));
       
-      // Update progress
-      await supabaseClient
-        .schema('t3d')
-        .from('jobs')
-        .update({ progress })
-        .eq('id', jobId);
+      // Update progress using secure function
+      await supabaseClient.rpc('update_job_status', {
+        p_job_id: jobId,
+        p_status: 'processing',
+        p_progress: progress
+      });
       
       console.log(`Job ${jobId} progress: ${progress}%`);
     }
@@ -62,16 +59,13 @@ serve(async (req) => {
     // In production, this would be the actual generated model
     const demoModelUrl = 'https://threejs.org/examples/models/gltf/DamagedHelmet/glTF/DamagedHelmet.gltf';
     
-    // Complete the job
-    const { error: completeError } = await supabaseClient
-      .schema('t3d')
-      .from('jobs')
-      .update({ 
-        status: 'completed',
-        progress: 100,
-        result_url: demoModelUrl
-      })
-      .eq('id', jobId);
+    // Complete the job using secure function
+    const { error: completeError } = await supabaseClient.rpc('update_job_status', {
+      p_job_id: jobId,
+      p_status: 'completed',
+      p_progress: 100,
+      p_result_url: demoModelUrl
+    });
 
     if (completeError) {
       throw new Error(`Failed to complete job: ${completeError.message}`);
@@ -104,14 +98,11 @@ serve(async (req) => {
           Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
         );
         
-        await supabaseClient
-          .schema('t3d')
-          .from('jobs')
-          .update({ 
-            status: 'failed',
-            error_message: error.message
-          })
-          .eq('id', jobId);
+        await supabaseClient.rpc('update_job_status', {
+          p_job_id: jobId,
+          p_status: 'failed',
+          p_error_message: error.message
+        });
       } catch (updateError) {
         console.error('Failed to update job status to failed:', updateError);
       }

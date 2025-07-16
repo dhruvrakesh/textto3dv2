@@ -33,70 +33,46 @@ serve(async (req) => {
       throw new Error('Unauthorized')
     }
 
-    // Insert prompt into t3d.prompts table
-    const { data: prompt, error: promptError } = await supabaseClient
-      .schema('t3d')
-      .from('prompts')
-      .insert({
-        user_id: user.id,
-        json: promptData,
-        version: 1
+    // Use security definer function to create prompt and job
+    const { data: result, error: createError } = await supabaseClient
+      .rpc('create_prompt_and_job', {
+        p_user_id: user.id,
+        p_prompt_data: promptData,
+        p_job_type: '3d_model_generation'
       })
-      .select()
-      .single()
 
-    if (promptError) {
-      console.error('Error creating prompt:', promptError)
-      throw new Error(`Failed to create prompt: ${promptError.message || JSON.stringify(promptError)}`)
+    if (createError || !result || result.length === 0) {
+      console.error('Error creating prompt and job:', createError)
+      throw new Error(`Failed to create prompt and job: ${createError?.message || 'Unknown error'}`)
     }
 
-    // Create corresponding job in t3d.jobs table
-    const { data: job, error: jobError } = await supabaseClient
-      .schema('t3d')
-      .from('jobs')
-      .insert({
-        prompt_id: prompt.id,
-        user_id: user.id,
-        job_type: '3d_model_generation',
-        status: 'queued',
-        progress: 0
-      })
-      .select()
-      .single()
+    const { prompt_id, job_id } = result[0]
 
-    if (jobError) {
-      console.error('Error creating job:', jobError)
-      throw new Error(`Failed to create job: ${jobError.message || JSON.stringify(jobError)}`)
-    }
-
-    console.log('Created job:', job.id)
+    console.log('Created job:', job_id)
 
     // Start the 3D generation process asynchronously
     const generateResponse = await supabaseClient.functions.invoke('generate-3d-model', {
       body: { 
-        jobId: job.id, 
+        jobId: job_id, 
         enhancedPrompt: promptData.description 
       }
     });
 
     if (generateResponse.error) {
       console.error('Failed to start 3D generation:', generateResponse.error);
-      // Update job status to failed
-      await supabaseClient
-        .schema('t3d')
-        .from('jobs')
-        .update({ 
-          status: 'failed',
-          error_message: 'Failed to start 3D generation'
-        })
-        .eq('id', job.id);
+      // Update job status to failed using secure function
+      await supabaseClient.rpc('update_job_status', {
+        p_job_id: job_id,
+        p_status: 'failed',
+        p_error_message: 'Failed to start 3D generation'
+      });
     }
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        promptId: prompt.id,
-        jobId: job.id,
+        promptId: prompt_id,
+        jobId: job_id,
         message: 'Prompt processed and 3D generation started' 
       }),
       { 
