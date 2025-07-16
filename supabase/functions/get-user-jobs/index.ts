@@ -21,21 +21,9 @@ serve(async (req) => {
     const { p_user_id } = await req.json()
     console.log('Fetching jobs for user:', p_user_id)
 
-    // Query t3d schema directly using service role key
+    // Use the safe function to query jobs
     const { data: jobs, error } = await supabaseClient
-      .from('t3d.jobs')
-      .select(`
-        *,
-        prompts:t3d.prompts!inner (
-          id,
-          space_type,
-          style,
-          description,
-          json
-        )
-      `)
-      .eq('user_id', p_user_id)
-      .order('created_at', { ascending: false });
+      .rpc('get_user_jobs_safe', { p_user_id });
 
     if (error) {
       console.error('Database error:', error)
