@@ -1,89 +1,181 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import Replicate from "https://esm.sh/replicate@0.25.2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Smart model selection based on prompt analysis
-function analyzePromptAndSelectModel(prompt: string) {
-  const promptLower = prompt.toLowerCase();
-  
-  // Curated 3D model collection with keyword mapping
-  const modelLibrary = [
-    {
-      name: 'Modern Chair',
-      url: 'https://threejs.org/examples/models/gltf/DamagedHelmet/glTF/DamagedHelmet.gltf',
-      keywords: ['chair', 'seat', 'furniture', 'sitting', 'office', 'desk'],
-      category: 'furniture'
-    },
-    {
-      name: 'Vintage Car',
-      url: 'https://threejs.org/examples/models/gltf/DamagedHelmet/glTF/DamagedHelmet.gltf',
-      keywords: ['car', 'vehicle', 'automobile', 'transport', 'vintage', 'classic'],
-      category: 'vehicle'
-    },
-    {
-      name: 'Modern House',
-      url: 'https://threejs.org/examples/models/gltf/DamagedHelmet/glTF/DamagedHelmet.gltf',
-      keywords: ['house', 'home', 'building', 'architecture', 'modern', 'residential'],
-      category: 'architecture'
-    },
-    {
-      name: 'Coffee Cup',
-      url: 'https://threejs.org/examples/models/gltf/DamagedHelmet/glTF/DamagedHelmet.gltf',
-      keywords: ['cup', 'coffee', 'mug', 'drink', 'beverage', 'kitchen'],
-      category: 'objects'
-    },
-    {
-      name: 'Laptop Computer',
-      url: 'https://threejs.org/examples/models/gltf/DamagedHelmet/glTF/DamagedHelmet.gltf',
-      keywords: ['laptop', 'computer', 'tech', 'technology', 'device', 'electronic'],
-      category: 'technology'
-    },
-    {
-      name: 'Potted Plant',
-      url: 'https://threejs.org/examples/models/gltf/DamagedHelmet/glTF/DamagedHelmet.gltf',
-      keywords: ['plant', 'pot', 'green', 'nature', 'indoor', 'decoration'],
-      category: 'nature'
-    },
-    {
-      name: 'Space Helmet (Default)',
-      url: 'https://threejs.org/examples/models/gltf/DamagedHelmet/glTF/DamagedHelmet.gltf',
-      keywords: ['helmet', 'space', 'astronaut', 'sci-fi', 'futuristic'],
-      category: 'default'
+// Replicate API Integration (Primary)
+async function generateWithReplicate(prompt: string): Promise<{ success: boolean; result?: string; error?: string; predictionId?: string }> {
+  try {
+    const REPLICATE_API_TOKEN = Deno.env.get('REPLICATE_API_TOKEN');
+    if (!REPLICATE_API_TOKEN) {
+      throw new Error('REPLICATE_API_TOKEN not configured');
     }
-  ];
 
-  // Score models based on keyword matches
-  const modelScores = modelLibrary.map(model => {
-    const matches = model.keywords.filter(keyword => 
-      promptLower.includes(keyword)
-    ).length;
+    const replicate = new Replicate({ auth: REPLICATE_API_TOKEN });
+    
+    console.log("Starting Replicate 3D generation with prompt:", prompt.substring(0, 100) + '...');
+    
+    // Use fofr/shap-e model for text-to-3D generation
+    const prediction = await replicate.predictions.create({
+      version: "43d45b2e4e4c1e1c8b9b0e4f7a5d3c2b1a9e8d7f6c5b4a3",
+      input: {
+        prompt: prompt,
+        guidance_scale: 15.0,
+        num_inference_steps: 64,
+        seed: Math.floor(Math.random() * 1000000)
+      }
+    });
+
+    console.log("Replicate prediction created:", prediction.id);
     
     return {
-      ...model,
-      score: matches,
-      matchedKeywords: model.keywords.filter(keyword => promptLower.includes(keyword))
+      success: true,
+      predictionId: prediction.id,
+      result: prediction.output || null
     };
-  });
+  } catch (error) {
+    console.error("Replicate generation error:", error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
 
-  // Sort by score and select best match
-  modelScores.sort((a, b) => b.score - a.score);
-  
-  // Return best match or default
-  const bestMatch = modelScores[0];
-  
-  return {
-    name: bestMatch.name,
-    url: bestMatch.url,
-    keywords: bestMatch.matchedKeywords.length > 0 ? bestMatch.matchedKeywords : ['general'],
-    category: bestMatch.category,
-    confidence: bestMatch.score > 0 ? (bestMatch.score / bestMatch.keywords.length) * 100 : 25
-  };
+// Hugging Face API Integration (Fallback)
+async function generateWithHuggingFace(prompt: string): Promise<{ success: boolean; result?: string; error?: string }> {
+  try {
+    const HF_TOKEN = Deno.env.get('HUGGING_FACE_ACCESS_TOKEN');
+    if (!HF_TOKEN) {
+      throw new Error('HUGGING_FACE_ACCESS_TOKEN not configured');
+    }
+
+    console.log("Starting Hugging Face 3D generation with prompt:", prompt.substring(0, 100) + '...');
+    
+    const response = await fetch("https://api-inference.huggingface.co/models/microsoft/Point-E", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${HF_TOKEN}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        inputs: prompt,
+        parameters: {
+          num_inference_steps: 64,
+          guidance_scale: 7.5
+        }
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Hugging Face API error: ${response.status} ${response.statusText} - ${errorText}`);
+    }
+
+    const result = await response.arrayBuffer();
+    const base64 = btoa(String.fromCharCode(...new Uint8Array(result)));
+    
+    console.log("Hugging Face 3D generation completed successfully");
+    
+    return {
+      success: true,
+      result: `data:model/gltf-binary;base64,${base64}`
+    };
+  } catch (error) {
+    console.error("Hugging Face generation error:", error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+// Check Replicate prediction status
+async function checkReplicateStatus(predictionId: string): Promise<{ success: boolean; status?: string; result?: string; error?: string }> {
+  try {
+    const REPLICATE_API_TOKEN = Deno.env.get('REPLICATE_API_TOKEN');
+    if (!REPLICATE_API_TOKEN) {
+      throw new Error('REPLICATE_API_TOKEN not configured');
+    }
+
+    const replicate = new Replicate({ auth: REPLICATE_API_TOKEN });
+    const prediction = await replicate.predictions.get(predictionId);
+    
+    return {
+      success: true,
+      status: prediction.status,
+      result: prediction.output?.[0] // Typically returns array of URLs
+    };
+  } catch (error) {
+    console.error("Replicate status check error:", error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+// Upload generated model to Supabase Storage
+async function uploadToStorage(supabase: any, fileData: string, fileName: string): Promise<{ success: boolean; url?: string; error?: string }> {
+  try {
+    console.log("Uploading model to storage:", fileName);
+    
+    // Handle different data formats
+    let fileBlob;
+    if (fileData.startsWith('data:')) {
+      // Base64 data URL
+      const base64Data = fileData.split(',')[1];
+      const byteCharacters = atob(base64Data);
+      const byteNumbers = new Array(byteCharacters.length);
+      
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      
+      const byteArray = new Uint8Array(byteNumbers);
+      fileBlob = new File([byteArray], fileName, { type: 'model/gltf-binary' });
+    } else if (fileData.startsWith('http')) {
+      // URL - download and re-upload
+      const response = await fetch(fileData);
+      const arrayBuffer = await response.arrayBuffer();
+      fileBlob = new File([arrayBuffer], fileName, { type: 'model/gltf-binary' });
+    } else {
+      throw new Error('Unsupported file data format');
+    }
+
+    const { data, error } = await supabase.storage
+      .from('t3d-renders')
+      .upload(`models/${fileName}`, fileBlob, {
+        cacheControl: '3600',
+        upsert: false
+      });
+
+    if (error) {
+      throw error;
+    }
+
+    const { data: urlData } = supabase.storage
+      .from('t3d-renders')
+      .getPublicUrl(`models/${fileName}`);
+
+    console.log("Model uploaded successfully to:", urlData.publicUrl);
+
+    return {
+      success: true,
+      url: urlData.publicUrl
+    };
+  } catch (error) {
+    console.error("Storage upload error:", error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
 }
 
 serve(async (req) => {
@@ -99,83 +191,131 @@ serve(async (req) => {
 
     const { jobId, enhancedPrompt } = await req.json();
 
-    console.log('Starting 3D generation for job:', jobId);
+    console.log('Starting AI-powered 3D generation for job:', jobId);
     console.log('Enhanced prompt:', enhancedPrompt.substring(0, 200) + '...');
 
-    // Update job to processing status using secure function
+    // Update job to processing status
     const { error: updateError } = await supabaseClient.rpc('update_job_status', {
       p_job_id: jobId,
       p_status: 'processing',
-      p_progress: 10
+      p_progress: 5
     });
 
     if (updateError) {
       throw new Error(`Failed to update job status: ${updateError.message}`);
     }
 
-    // Smart 3D model selection based on prompt analysis
-    const selectedModel = analyzePromptAndSelectModel(enhancedPrompt);
-    console.log('Selected model:', selectedModel.name, 'for prompt keywords:', selectedModel.keywords);
-
-    // Realistic progress simulation with varied timing
-    const progressSteps = [
-      { progress: 15, delay: 1000, message: 'Analyzing prompt...' },
-      { progress: 30, delay: 1500, message: 'Initializing 3D generation...' },
-      { progress: 50, delay: 2000, message: 'Processing geometry...' },
-      { progress: 70, delay: 1800, message: 'Applying materials...' },
-      { progress: 85, delay: 1200, message: 'Optimizing model...' },
-      { progress: 95, delay: 800, message: 'Finalizing...' },
-      { progress: 100, delay: 500, message: 'Complete!' }
-    ];
-    
-    for (let i = 0; i < progressSteps.length; i++) {
-      const step = progressSteps[i];
-      
-      // Variable processing time for realism
-      await new Promise(resolve => setTimeout(resolve, step.delay));
-      
-      // Update progress with descriptive message
-      await supabaseClient.rpc('update_job_status', {
-        p_job_id: jobId,
-        p_status: 'processing',
-        p_progress: step.progress
-      });
-      
-      console.log(`Job ${jobId} progress: ${step.progress}% - ${step.message}`);
-    }
-
-    // Use the intelligently selected model
-    const resultUrl = selectedModel.url;
-    
-    // Complete the job using secure function
-    const { error: completeError } = await supabaseClient.rpc('update_job_status', {
+    // Step 1: Try Replicate API first (Primary)
+    console.log("Attempting 3D generation with Replicate API...");
+    await supabaseClient.rpc('update_job_status', {
       p_job_id: jobId,
-      p_status: 'completed',
-      p_progress: 100,
-      p_result_url: resultUrl
+      p_status: 'processing',
+      p_progress: 15
     });
 
-    if (completeError) {
-      throw new Error(`Failed to complete job: ${completeError.message}`);
+    const replicateResult = await generateWithReplicate(enhancedPrompt);
+    
+    if (replicateResult.success && replicateResult.predictionId) {
+      // Poll Replicate for completion
+      let attempts = 0;
+      const maxAttempts = 30; // 5 minutes max
+      
+      while (attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 10000)); // Wait 10 seconds
+        attempts++;
+        
+        const progress = Math.min(20 + (attempts * 2), 80);
+        await supabaseClient.rpc('update_job_status', {
+          p_job_id: jobId,
+          p_status: 'processing',
+          p_progress: progress
+        });
+        
+        const statusCheck = await checkReplicateStatus(replicateResult.predictionId);
+        
+        if (statusCheck.success && statusCheck.status === 'succeeded' && statusCheck.result) {
+          console.log("Replicate generation completed successfully");
+          
+          // Upload to storage
+          const fileName = `${jobId}_replicate_${Date.now()}.glb`;
+          const uploadResult = await uploadToStorage(supabaseClient, statusCheck.result, fileName);
+          
+          if (uploadResult.success) {
+            // Complete the job
+            await supabaseClient.rpc('update_job_status', {
+              p_job_id: jobId,
+              p_status: 'completed',
+              p_progress: 100,
+              p_result_url: uploadResult.url,
+              p_job_type: 'replicate'
+            });
+
+            return new Response(
+              JSON.stringify({ 
+                success: true,
+                jobId,
+                resultUrl: uploadResult.url,
+                provider: 'replicate',
+                message: '3D model generated successfully with Replicate AI'
+              }),
+              { 
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 200 
+              }
+            );
+          }
+        } else if (statusCheck.success && statusCheck.status === 'failed') {
+          console.log("Replicate generation failed, trying Hugging Face fallback");
+          break;
+        }
+      }
     }
 
-    console.log('3D generation completed for job:', jobId, 'Model:', selectedModel.name);
+    // Step 2: Fallback to Hugging Face
+    console.log("Attempting 3D generation with Hugging Face API...");
+    await supabaseClient.rpc('update_job_status', {
+      p_job_id: jobId,
+      p_status: 'processing',
+      p_progress: 85
+    });
 
-    return new Response(
-      JSON.stringify({ 
-        success: true,
-        jobId,
-        resultUrl,
-        modelName: selectedModel.name,
-        category: selectedModel.category,
-        confidence: selectedModel.confidence,
-        message: `3D model generated successfully: ${selectedModel.name}`
-      }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200 
+    const hfResult = await generateWithHuggingFace(enhancedPrompt);
+    
+    if (hfResult.success && hfResult.result) {
+      console.log("Hugging Face generation completed successfully");
+      
+      // Upload to storage
+      const fileName = `${jobId}_huggingface_${Date.now()}.glb`;
+      const uploadResult = await uploadToStorage(supabaseClient, hfResult.result, fileName);
+      
+      if (uploadResult.success) {
+        // Complete the job
+        await supabaseClient.rpc('update_job_status', {
+          p_job_id: jobId,
+          p_status: 'completed',
+          p_progress: 100,
+          p_result_url: uploadResult.url,
+          p_job_type: 'huggingface'
+        });
+
+        return new Response(
+          JSON.stringify({ 
+            success: true,
+            jobId,
+            resultUrl: uploadResult.url,
+            provider: 'huggingface',
+            message: '3D model generated successfully with Hugging Face AI'
+          }),
+          { 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200 
+          }
+        );
       }
-    );
+    }
+
+    // If both APIs fail, return error
+    throw new Error('Both Replicate and Hugging Face APIs failed to generate 3D model');
 
   } catch (error) {
     console.error('Error in generate-3d-model function:', error);
