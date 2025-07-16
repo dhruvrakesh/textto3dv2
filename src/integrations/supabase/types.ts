@@ -3830,6 +3830,13 @@ export type Database = {
         }
         Returns: boolean
       }
+      create_prompt_and_job: {
+        Args: { p_user_id: string; p_prompt_data: Json; p_job_type?: string }
+        Returns: {
+          prompt_id: string
+          job_id: string
+        }[]
+      }
       delete_deck_viscosity_reading: {
         Args: { p_reading_id: string }
         Returns: boolean
@@ -4035,6 +4042,16 @@ export type Database = {
       update_attendance_from_csv: {
         Args: { rows: Json; update_reason: string }
         Returns: Json
+      }
+      update_job_status: {
+        Args: {
+          p_job_id: string
+          p_status: string
+          p_progress?: number
+          p_result_url?: string
+          p_error_message?: string
+        }
+        Returns: undefined
       }
       update_leave_balance: {
         Args: { emp_id: string; days_used: number }
