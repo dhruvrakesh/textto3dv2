@@ -50,7 +50,7 @@ serve(async (req) => {
 
     if (promptError) {
       console.error('Error creating prompt:', promptError)
-      throw new Error('Failed to create prompt')
+      throw new Error(`Failed to create prompt: ${promptError.message || JSON.stringify(promptError)}`)
     }
 
     // Create corresponding job in t3d.jobs table
@@ -68,7 +68,7 @@ serve(async (req) => {
 
     if (jobError) {
       console.error('Error creating job:', jobError)
-      throw new Error('Failed to create job')
+      throw new Error(`Failed to create job: ${jobError.message || JSON.stringify(jobError)}`)
     }
 
     console.log('Created job:', job.id)

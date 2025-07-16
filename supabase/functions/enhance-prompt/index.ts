@@ -13,10 +13,13 @@ serve(async (req) => {
   }
 
   try {
-    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+    const openAIApiKey = Deno.env.get('OPENAI_KEY');
     if (!openAIApiKey) {
+      console.error('OpenAI API key not found in environment variables');
       throw new Error('OpenAI API key not configured');
     }
+    
+    console.log('OpenAI API key found, processing request...');
 
     const { promptData } = await req.json();
 
@@ -62,7 +65,9 @@ Create a comprehensive prompt that will generate a photorealistic 3D interior sp
     });
 
     if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.status}`);
+      const errorText = await response.text();
+      console.error('OpenAI API error:', response.status, errorText);
+      throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
