@@ -35,7 +35,7 @@ serve(async (req) => {
 
     // Use security definer function to create prompt and job
     const { data: result, error: createError } = await supabaseClient
-      .rpc('t3d.create_prompt_and_job', {
+      .rpc('create_prompt_and_job', {
         p_user_id: user.id,
         p_prompt_data: promptData,
         p_job_type: '3d_model_generation'
@@ -61,7 +61,7 @@ serve(async (req) => {
     if (generateResponse.error) {
       console.error('Failed to start 3D generation:', generateResponse.error);
       // Update job status to failed using secure function
-      await supabaseClient.rpc('t3d.update_job_status', {
+      await supabaseClient.rpc('update_job_status', {
         p_job_id: job_id,
         p_status: 'failed',
         p_error_message: 'Failed to start 3D generation'
