@@ -33,19 +33,25 @@ export const useJobs = () => {
     queryFn: async () => {
       if (!user) return [];
       
-      // Call the Edge Function to get jobs from t3d schema
-      const { data, error } = await supabase.functions.invoke('get-user-jobs', {
-        body: { p_user_id: user.id }
-      });
+      try {
+        // Call the Edge Function to get jobs from t3d schema
+        const { data, error } = await supabase.functions.invoke('get-user-jobs', {
+          body: { p_user_id: user.id }
+        });
 
-      if (error) {
-        console.error('Error fetching jobs:', error);
-        throw error;
+        if (error) {
+          console.error('Error fetching jobs:', error);
+          return []; // Return empty array instead of throwing
+        }
+        
+        return (data || []) as Job[];
+      } catch (err) {
+        console.error('Jobs fetch failed:', err);
+        return []; // Return empty array instead of throwing
       }
-      
-      return (data || []) as Job[];
     },
     enabled: !!user,
+    retry: false, // Don't retry failed requests
   });
 
   // Set up real-time subscription for job updates using direct channel
@@ -80,12 +86,20 @@ export const useJobs = () => {
   const processPrompt = async (promptData: any) => {
     if (!user) throw new Error('User not authenticated');
 
-    const { data, error } = await supabase.functions.invoke('process-prompt', {
-      body: { promptData }
-    });
+    try {
+      const { data, error } = await supabase.functions.invoke('process-prompt', {
+        body: { promptData }
+      });
 
-    if (error) throw error;
-    return data;
+      if (error) {
+        console.error('Process prompt error:', error);
+        throw new Error('Failed to process prompt');
+      }
+      return data;
+    } catch (err) {
+      console.error('Process prompt failed:', err);
+      throw err;
+    }
   };
 
   return {

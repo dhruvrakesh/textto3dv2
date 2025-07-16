@@ -3773,7 +3773,6 @@ export type Database = {
           status: string
           progress: number
           result_url: string
-          error_message: string
           created_at: string
           updated_at: string
           prompt_data: Json

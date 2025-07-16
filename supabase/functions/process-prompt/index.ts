@@ -35,7 +35,8 @@ serve(async (req) => {
 
     // Insert prompt into t3d.prompts table
     const { data: prompt, error: promptError } = await supabaseClient
-      .from('t3d.prompts')
+      .schema('t3d')
+      .from('prompts')
       .insert({
         user_id: user.id,
         space_type: promptData.space,
@@ -54,7 +55,8 @@ serve(async (req) => {
 
     // Create corresponding job in t3d.jobs table
     const { data: job, error: jobError } = await supabaseClient
-      .from('t3d.jobs')
+      .schema('t3d')
+      .from('jobs')
       .insert({
         prompt_id: prompt.id,
         user_id: user.id,
