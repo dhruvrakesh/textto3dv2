@@ -143,6 +143,45 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_audit_log: {
+        Row: {
+          action: string
+          admin_id: string | null
+          created_at: string | null
+          id: string
+          ip_address: unknown | null
+          new_data: Json | null
+          old_data: Json | null
+          target_id: string | null
+          target_table: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          admin_id?: string | null
+          created_at?: string | null
+          id?: string
+          ip_address?: unknown | null
+          new_data?: Json | null
+          old_data?: Json | null
+          target_id?: string | null
+          target_table?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          admin_id?: string | null
+          created_at?: string | null
+          id?: string
+          ip_address?: unknown | null
+          new_data?: Json | null
+          old_data?: Json | null
+          target_id?: string | null
+          target_table?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       advances: {
         Row: {
           advance_amount: number
@@ -607,7 +646,7 @@ export type Database = {
           category_id: string | null
           condition: Database["public"]["Enums"]["asset_condition"] | null
           created_at: string | null
-          created_by: string | null
+          created_by: string
           current_value: number | null
           description: string | null
           id: string
@@ -631,7 +670,7 @@ export type Database = {
           category_id?: string | null
           condition?: Database["public"]["Enums"]["asset_condition"] | null
           created_at?: string | null
-          created_by?: string | null
+          created_by: string
           current_value?: number | null
           description?: string | null
           id?: string
@@ -655,7 +694,7 @@ export type Database = {
           category_id?: string | null
           condition?: Database["public"]["Enums"]["asset_condition"] | null
           created_at?: string | null
-          created_by?: string | null
+          created_by?: string
           current_value?: number | null
           description?: string | null
           id?: string
@@ -772,6 +811,33 @@ export type Database = {
           overtime_hours?: number | null
           unit_id?: string | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      attendance_bulk_updates: {
+        Row: {
+          affected_records: number
+          batch_id: string
+          created_at: string | null
+          id: string
+          reason: string
+          user_id: string | null
+        }
+        Insert: {
+          affected_records?: number
+          batch_id?: string
+          created_at?: string | null
+          id?: string
+          reason: string
+          user_id?: string | null
+        }
+        Update: {
+          affected_records?: number
+          batch_id?: string
+          created_at?: string | null
+          id?: string
+          reason?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -1243,6 +1309,30 @@ export type Database = {
           status?: string | null
           subject?: string
           to_email?: string
+        }
+        Relationships: []
+      }
+      employee_code_sequences: {
+        Row: {
+          created_at: string | null
+          id: string
+          last_sequence: number
+          unit_code: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          last_sequence?: number
+          unit_code: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          last_sequence?: number
+          unit_code?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -2602,6 +2692,7 @@ export type Database = {
           active: boolean | null
           base_salary: number
           created_at: string | null
+          employee_code: string | null
           hra_amount: number | null
           id: string
           joining_date: string
@@ -2617,6 +2708,7 @@ export type Database = {
           active?: boolean | null
           base_salary: number
           created_at?: string | null
+          employee_code?: string | null
           hra_amount?: number | null
           id?: string
           joining_date: string
@@ -2632,6 +2724,7 @@ export type Database = {
           active?: boolean | null
           base_salary?: number
           created_at?: string | null
+          employee_code?: string | null
           hra_amount?: number | null
           id?: string
           joining_date?: string
@@ -3745,8 +3838,35 @@ export type Database = {
         Args: { log_id: string }
         Returns: undefined
       }
+      enhanced_employee_lookup: {
+        Args: { p_employee_identifier: string }
+        Returns: {
+          employee_id: string
+          employee_name: string
+          uan_number: string
+          employee_code: string
+          unit_id: string
+        }[]
+      }
+      export_employee_master: {
+        Args: { p_unit_id?: string }
+        Returns: {
+          employee_code: string
+          employee_name: string
+          uan_number: string
+          unit_code: string
+          unit_name: string
+          joining_date: string
+          base_salary: number
+          active: boolean
+        }[]
+      }
       generate_asset_code: {
         Args: { p_location_code: string; p_category_code: string }
+        Returns: string
+      }
+      generate_employee_code: {
+        Args: { p_unit_id: string }
         Returns: string
       }
       get_current_user_role: {
@@ -3861,6 +3981,10 @@ export type Database = {
         Args: { rows: Json }
         Returns: Json
       }
+      insert_attendance_from_csv_enhanced: {
+        Args: { rows: Json }
+        Returns: Json
+      }
       is_admin: {
         Args: Record<PropertyKey, never>
         Returns: boolean
@@ -3905,6 +4029,10 @@ export type Database = {
       text_to_bytea: {
         Args: { data: string }
         Returns: string
+      }
+      update_attendance_from_csv: {
+        Args: { rows: Json; update_reason: string }
+        Returns: Json
       }
       update_leave_balance: {
         Args: { emp_id: string; days_used: number }
