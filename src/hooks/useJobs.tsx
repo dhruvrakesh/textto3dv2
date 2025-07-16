@@ -11,6 +11,7 @@ export interface Job {
   status: 'queued' | 'processing' | 'completed' | 'failed';
   progress: number;
   result_url?: string;
+  job_type?: string;
   error_message?: string;
   created_at: string;
   updated_at: string;
