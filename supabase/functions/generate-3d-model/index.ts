@@ -26,7 +26,8 @@ serve(async (req) => {
 
     // Update job to processing status
     const { error: updateError } = await supabaseClient
-      .from('t3d.jobs')
+      .schema('t3d')
+      .from('jobs')
       .update({ 
         status: 'processing',
         progress: 10
@@ -49,7 +50,8 @@ serve(async (req) => {
       
       // Update progress
       await supabaseClient
-        .from('t3d.jobs')
+        .schema('t3d')
+        .from('jobs')
         .update({ progress })
         .eq('id', jobId);
       
@@ -62,7 +64,8 @@ serve(async (req) => {
     
     // Complete the job
     const { error: completeError } = await supabaseClient
-      .from('t3d.jobs')
+      .schema('t3d')
+      .from('jobs')
       .update({ 
         status: 'completed',
         progress: 100,
@@ -102,7 +105,8 @@ serve(async (req) => {
         );
         
         await supabaseClient
-          .from('t3d.jobs')
+          .schema('t3d')
+          .from('jobs')
           .update({ 
             status: 'failed',
             error_message: error.message

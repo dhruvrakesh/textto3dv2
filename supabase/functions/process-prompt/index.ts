@@ -39,11 +39,8 @@ serve(async (req) => {
       .from('prompts')
       .insert({
         user_id: user.id,
-        space_type: promptData.space,
-        style: promptData.style,
-        description: promptData.description,
         json: promptData,
-        status: 'pending'
+        version: 1
       })
       .select()
       .single()
@@ -60,6 +57,7 @@ serve(async (req) => {
       .insert({
         prompt_id: prompt.id,
         user_id: user.id,
+        job_type: '3d_model_generation',
         status: 'queued',
         progress: 0
       })
@@ -73,12 +71,33 @@ serve(async (req) => {
 
     console.log('Created job:', job.id)
 
+    // Start the 3D generation process asynchronously
+    const generateResponse = await supabaseClient.functions.invoke('generate-3d-model', {
+      body: { 
+        jobId: job.id, 
+        enhancedPrompt: promptData.description 
+      }
+    });
+
+    if (generateResponse.error) {
+      console.error('Failed to start 3D generation:', generateResponse.error);
+      // Update job status to failed
+      await supabaseClient
+        .schema('t3d')
+        .from('jobs')
+        .update({ 
+          status: 'failed',
+          error_message: 'Failed to start 3D generation'
+        })
+        .eq('id', job.id);
+    }
+
     return new Response(
       JSON.stringify({ 
         success: true, 
         promptId: prompt.id,
         jobId: job.id,
-        message: 'Prompt processed and job queued successfully' 
+        message: 'Prompt processed and 3D generation started' 
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
