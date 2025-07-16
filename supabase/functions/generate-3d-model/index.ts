@@ -195,7 +195,7 @@ serve(async (req) => {
     console.log('Enhanced prompt:', enhancedPrompt.substring(0, 200) + '...');
 
     // Update job to processing status
-    const { error: updateError } = await supabaseClient.rpc('update_job_status', {
+    const { error: updateError } = await supabaseClient.rpc('t3d.update_job_status', {
       p_job_id: jobId,
       p_status: 'processing',
       p_progress: 5
@@ -207,7 +207,7 @@ serve(async (req) => {
 
     // Step 1: Try Replicate API first (Primary)
     console.log("Attempting 3D generation with Replicate API...");
-    await supabaseClient.rpc('update_job_status', {
+    await supabaseClient.rpc('t3d.update_job_status', {
       p_job_id: jobId,
       p_status: 'processing',
       p_progress: 15
@@ -225,7 +225,7 @@ serve(async (req) => {
         attempts++;
         
         const progress = Math.min(20 + (attempts * 2), 80);
-        await supabaseClient.rpc('update_job_status', {
+        await supabaseClient.rpc('t3d.update_job_status', {
           p_job_id: jobId,
           p_status: 'processing',
           p_progress: progress
@@ -242,7 +242,7 @@ serve(async (req) => {
           
           if (uploadResult.success) {
             // Complete the job
-            await supabaseClient.rpc('update_job_status', {
+            await supabaseClient.rpc('t3d.update_job_status', {
               p_job_id: jobId,
               p_status: 'completed',
               p_progress: 100,
@@ -273,7 +273,7 @@ serve(async (req) => {
 
     // Step 2: Fallback to Hugging Face
     console.log("Attempting 3D generation with Hugging Face API...");
-    await supabaseClient.rpc('update_job_status', {
+    await supabaseClient.rpc('t3d.update_job_status', {
       p_job_id: jobId,
       p_status: 'processing',
       p_progress: 85
@@ -290,7 +290,7 @@ serve(async (req) => {
       
       if (uploadResult.success) {
         // Complete the job
-        await supabaseClient.rpc('update_job_status', {
+        await supabaseClient.rpc('t3d.update_job_status', {
           p_job_id: jobId,
           p_status: 'completed',
           p_progress: 100,
@@ -329,7 +329,7 @@ serve(async (req) => {
           Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
         );
         
-        await supabaseClient.rpc('update_job_status', {
+        await supabaseClient.rpc('t3d.update_job_status', {
           p_job_id: jobId,
           p_status: 'failed',
           p_error_message: error.message
