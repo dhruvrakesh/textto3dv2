@@ -23,7 +23,7 @@ serve(async (req) => {
 
     // Use the safe function to query jobs
     const { data: jobs, error } = await supabaseClient
-      .rpc('t3d.get_user_jobs_safe', { p_user_id });
+      .rpc('get_user_jobs_safe', { p_user_id });
 
     if (error) {
       console.error('Database error:', error)
