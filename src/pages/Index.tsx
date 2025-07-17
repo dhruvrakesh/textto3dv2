@@ -11,7 +11,7 @@ const Index = () => {
   const [showWizard, setShowWizard] = useState(false);
   const [currentModel, setCurrentModel] = useState<string | undefined>();
   const [currentJob, setCurrentJob] = useState<Job | undefined>();
-  const { jobs, isLoading } = useJobs();
+  const { jobs, isLoading, deleteJob, retryJob } = useJobs();
   const { toast } = useToast();
 
   // Find any processing job to show in the viewer
@@ -56,12 +56,37 @@ const Index = () => {
   };
 
   const handleDeleteJob = async (jobId: string) => {
-    // Note: In a real implementation, you'd want to implement a delete job API
-    toast({
-      title: "Delete Job",
-      description: "Job deletion will be implemented in the next phase",
-      variant: "destructive",
-    });
+    try {
+      await deleteJob(jobId);
+      toast({
+        title: "Job Deleted",
+        description: "The job has been successfully deleted.",
+      });
+    } catch (error) {
+      console.error('Delete job error:', error);
+      toast({
+        title: "Failed to Delete Job",
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRetryJob = async (jobId: string) => {
+    try {
+      await retryJob(jobId);
+      toast({
+        title: "Job Retried",
+        description: "The job has been reset and will be processed again.",
+      });
+    } catch (error) {
+      console.error('Retry job error:', error);
+      toast({
+        title: "Failed to Retry Job",
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -148,6 +173,7 @@ const Index = () => {
               <GenerationHistory 
                 onView={handleViewJob}
                 onDelete={handleDeleteJob}
+                onRetry={handleRetryJob}
               />
             </ErrorBoundary>
           </div>

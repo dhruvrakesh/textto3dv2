@@ -124,10 +124,85 @@ export const useJobs = () => {
     }
   };
 
+  const deleteJob = async (jobId: string) => {
+    if (!user) throw new Error('User not authenticated');
+
+    try {
+      const { data, error } = await supabase.functions.invoke('delete-job', {
+        body: { jobId }
+      });
+
+      if (error) {
+        console.error('Delete job error:', error);
+        throw new Error(error.message || 'Failed to delete job');
+      }
+
+      // Immediately update the query cache to remove the deleted job
+      queryClient.setQueryData(['jobs', user.id], (oldData: Job[] | undefined) => {
+        if (!oldData) return oldData;
+        return oldData.filter(job => job.id !== jobId);
+      });
+
+      return data;
+    } catch (err) {
+      console.error('Delete job failed:', err);
+      throw err;
+    }
+  };
+
+  const retryJob = async (jobId: string) => {
+    if (!user) throw new Error('User not authenticated');
+
+    try {
+      const { data, error } = await supabase.functions.invoke('retry-job', {
+        body: { jobId }
+      });
+
+      if (error) {
+        console.error('Retry job error:', error);
+        throw new Error(error.message || 'Failed to retry job');
+      }
+
+      // Invalidate queries to refresh the job list
+      queryClient.invalidateQueries({ queryKey: ['jobs', user.id] });
+
+      return data;
+    } catch (err) {
+      console.error('Retry job failed:', err);
+      throw err;
+    }
+  };
+
+  const bulkDeleteJobs = async (jobIds: string[]) => {
+    if (!user) throw new Error('User not authenticated');
+
+    try {
+      // Delete jobs one by one using the delete function
+      const results = await Promise.allSettled(
+        jobIds.map(jobId => deleteJob(jobId))
+      );
+
+      const successCount = results.filter(r => r.status === 'fulfilled').length;
+      const failureCount = results.length - successCount;
+
+      if (failureCount > 0) {
+        console.warn(`${failureCount} jobs failed to delete out of ${jobIds.length}`);
+      }
+
+      return { successCount, failureCount };
+    } catch (err) {
+      console.error('Bulk delete jobs failed:', err);
+      throw err;
+    }
+  };
+
   return {
     jobs,
     isLoading,
     error,
-    processPrompt
+    processPrompt,
+    deleteJob,
+    retryJob,
+    bulkDeleteJobs
   };
 };

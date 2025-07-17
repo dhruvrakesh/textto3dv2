@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ProgressBar } from "@/components/ProgressBar";
-import { Clock, Eye, Download, Trash2, AlertCircle, CheckCircle, Loader } from "lucide-react";
+import { Clock, Eye, Download, Trash2, AlertCircle, CheckCircle, Loader, RotateCcw } from "lucide-react";
 import { useJobs, Job } from "@/hooks/useJobs";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -12,9 +12,10 @@ import { formatDistanceToNow } from "date-fns";
 interface GenerationHistoryProps {
   onView?: (item: Job) => void;
   onDelete?: (id: string) => void;
+  onRetry?: (id: string) => void;
 }
 
-const GenerationHistory = ({ onView, onDelete }: GenerationHistoryProps) => {
+const GenerationHistory = ({ onView, onDelete, onRetry }: GenerationHistoryProps) => {
   const { jobs, isLoading } = useJobs();
   const { toast } = useToast();
 
@@ -206,6 +207,19 @@ const GenerationHistory = ({ onView, onDelete }: GenerationHistoryProps) => {
                         </Button>
                       </>
                     )}
+                    {/* Retry Button - Only for failed jobs */}
+                    {job.status === 'failed' && onRetry && (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => onRetry(job.id)}
+                        className="h-7 px-2 hover:bg-primary/20 hover:border-primary/50"
+                      >
+                        <RotateCcw className="w-3 h-3 mr-1" />
+                        Retry
+                      </Button>
+                    )}
+                    
                     <Button 
                       variant="outline" 
                       size="sm"
