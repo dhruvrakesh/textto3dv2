@@ -194,10 +194,10 @@ serve(async (req) => {
     console.log('Starting AI-powered 3D generation for job:', jobId);
     console.log('Enhanced prompt:', enhancedPrompt.substring(0, 200) + '...');
 
-    // Update job to processing status
+    // Update job to running status
     const { error: updateError } = await supabaseClient.rpc('update_job_status', {
       p_job_id: jobId,
-      p_status: 'processing',
+      p_status: 'running',
       p_progress: 5
     });
 
@@ -209,7 +209,7 @@ serve(async (req) => {
     console.log("Attempting 3D generation with Replicate API...");
     await supabaseClient.rpc('update_job_status', {
       p_job_id: jobId,
-      p_status: 'processing',
+      p_status: 'running',
       p_progress: 15
     });
 
@@ -227,7 +227,7 @@ serve(async (req) => {
         const progress = Math.min(20 + (attempts * 2), 80);
         await supabaseClient.rpc('update_job_status', {
           p_job_id: jobId,
-          p_status: 'processing',
+          p_status: 'running',
           p_progress: progress
         });
         
@@ -275,7 +275,7 @@ serve(async (req) => {
     console.log("Attempting 3D generation with Hugging Face API...");
     await supabaseClient.rpc('update_job_status', {
       p_job_id: jobId,
-      p_status: 'processing',
+      p_status: 'running',
       p_progress: 85
     });
 

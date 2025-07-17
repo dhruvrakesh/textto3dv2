@@ -8,7 +8,7 @@ export interface Job {
   id: string;
   prompt_id: string;
   user_id: string;
-  status: 'queued' | 'processing' | 'completed' | 'failed';
+  status: 'queued' | 'running' | 'completed' | 'failed';
   progress: number;
   result_url?: string;
   job_type?: string;

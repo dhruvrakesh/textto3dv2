@@ -22,7 +22,7 @@ const GenerationHistory = ({ onView, onDelete, onRetry }: GenerationHistoryProps
   const getStatusColor = (status: Job["status"]) => {
     switch (status) {
       case "queued":
-      case "processing":
+      case "running":
         return "bg-primary/20 text-primary border-primary/30";
       case "completed":
         return "bg-green-500/20 text-green-400 border-green-500/30";
@@ -126,13 +126,13 @@ const GenerationHistory = ({ onView, onDelete, onRetry }: GenerationHistoryProps
                       }
                       className={cn(
                         "text-xs",
-                        job.status === 'processing' && "animate-pulse"
+                        job.status === 'running' && "animate-pulse"
                       )}
                     >
-                      {job.status === 'processing' ? (
+                      {job.status === 'running' ? (
                         <div className="flex items-center gap-1">
                           <Loader className="w-3 h-3 animate-spin" />
-                          Processing
+                          Running
                         </div>
                       ) : job.status === 'completed' ? (
                         <div className="flex items-center gap-1">
@@ -156,7 +156,7 @@ const GenerationHistory = ({ onView, onDelete, onRetry }: GenerationHistoryProps
                 </div>
 
                 {/* Enhanced Progress Bar for active jobs */}
-                {(job.status === 'processing' || job.status === 'queued') && (
+                {(job.status === 'running' || job.status === 'queued') && (
                   <ProgressBar 
                     progress={job.progress || 0} 
                     status={job.status}

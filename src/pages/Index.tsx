@@ -14,9 +14,9 @@ const Index = () => {
   const { jobs, isLoading, deleteJob, retryJob } = useJobs();
   const { toast } = useToast();
 
-  // Find any processing job to show in the viewer
+  // Find any running job to show in the viewer
   useEffect(() => {
-    const processingJob = jobs.find(job => job.status === 'processing' || job.status === 'queued');
+    const processingJob = jobs.find(job => job.status === 'running' || job.status === 'queued');
     if (processingJob) {
       setCurrentJob(processingJob);
       setCurrentModel(undefined); // Clear model while generating
@@ -131,7 +131,7 @@ const Index = () => {
             <ErrorBoundary>
               <ModelViewer 
                 model={currentModel}
-                isGenerating={currentJob?.status === 'processing' || currentJob?.status === 'queued'}
+                isGenerating={currentJob?.status === 'running' || currentJob?.status === 'queued'}
                 job={currentJob}
               />
             </ErrorBoundary>
@@ -150,7 +150,7 @@ const Index = () => {
               
               {currentJob && (
                 <div className="text-center text-sm text-muted-foreground">
-                  {currentJob.status === 'processing' || currentJob.status === 'queued' ? (
+                  {currentJob.status === 'running' || currentJob.status === 'queued' ? (
                     <span className="flex items-center justify-center gap-2">
                       <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
                       Generating your space...
