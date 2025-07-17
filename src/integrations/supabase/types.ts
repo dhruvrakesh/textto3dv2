@@ -1076,6 +1076,48 @@ export type Database = {
         }
         Relationships: []
       }
+      csv_upload_log: {
+        Row: {
+          created_at: string
+          error_details: Json | null
+          failed_rows: number
+          file_name: string
+          id: string
+          successful_rows: number
+          total_rows: number
+          updated_at: string
+          upload_date: string
+          upload_type: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          error_details?: Json | null
+          failed_rows?: number
+          file_name: string
+          id?: string
+          successful_rows?: number
+          total_rows?: number
+          updated_at?: string
+          upload_date?: string
+          upload_type: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          error_details?: Json | null
+          failed_rows?: number
+          file_name?: string
+          id?: string
+          successful_rows?: number
+          total_rows?: number
+          updated_at?: string
+          upload_date?: string
+          upload_type?: string
+          uploaded_by?: string | null
+        }
+        Relationships: []
+      }
       deck_viscosity_readings: {
         Row: {
           captured_at: string
@@ -2618,6 +2660,36 @@ export type Database = {
         }
         Relationships: []
       }
+      organizations: {
+        Row: {
+          code: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       payroll_audit_log: {
         Row: {
           id: string
@@ -3007,6 +3079,7 @@ export type Database = {
           id: string
           is_active: boolean | null
           is_approved: boolean | null
+          organization_id: string
           role: string | null
           updated_at: string
         }
@@ -3018,6 +3091,7 @@ export type Database = {
           id: string
           is_active?: boolean | null
           is_approved?: boolean | null
+          organization_id: string
           role?: string | null
           updated_at?: string
         }
@@ -3029,10 +3103,19 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           is_approved?: boolean | null
+          organization_id?: string
           role?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       publications: {
         Row: {
@@ -3310,6 +3393,314 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "units"
             referencedColumns: ["unit_id"]
+          },
+        ]
+      }
+      satguru_categories: {
+        Row: {
+          category_name: string
+          created_at: string
+          description: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          category_name: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          category_name?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      satguru_csv_upload_log: {
+        Row: {
+          created_at: string
+          error_details: Json | null
+          failed_rows: number
+          file_name: string
+          id: string
+          successful_rows: number
+          total_rows: number
+          updated_at: string
+          upload_date: string
+          upload_type: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          error_details?: Json | null
+          failed_rows?: number
+          file_name: string
+          id?: string
+          successful_rows?: number
+          total_rows?: number
+          updated_at?: string
+          upload_date?: string
+          upload_type: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          error_details?: Json | null
+          failed_rows?: number
+          file_name?: string
+          id?: string
+          successful_rows?: number
+          total_rows?: number
+          updated_at?: string
+          upload_date?: string
+          upload_type?: string
+          uploaded_by?: string | null
+        }
+        Relationships: []
+      }
+      satguru_daily_stock_summary: {
+        Row: {
+          category_name: string | null
+          created_at: string
+          current_qty: number
+          days_of_cover: number | null
+          id: string
+          item_code: string
+          item_name: string
+          opening_qty: number
+          summary_date: string
+          total_grn_qty: number
+          total_issued_qty: number
+        }
+        Insert: {
+          category_name?: string | null
+          created_at?: string
+          current_qty?: number
+          days_of_cover?: number | null
+          id?: string
+          item_code: string
+          item_name: string
+          opening_qty?: number
+          summary_date?: string
+          total_grn_qty?: number
+          total_issued_qty?: number
+        }
+        Update: {
+          category_name?: string | null
+          created_at?: string
+          current_qty?: number
+          days_of_cover?: number | null
+          id?: string
+          item_code?: string
+          item_name?: string
+          opening_qty?: number
+          summary_date?: string
+          total_grn_qty?: number
+          total_issued_qty?: number
+        }
+        Relationships: []
+      }
+      satguru_grn_log: {
+        Row: {
+          amount_inr: number | null
+          created_at: string
+          date: string
+          grn_number: string
+          id: string
+          invoice_number: string | null
+          item_code: string
+          qty_received: number
+          remarks: string | null
+          uom: string
+          vendor: string | null
+        }
+        Insert: {
+          amount_inr?: number | null
+          created_at?: string
+          date?: string
+          grn_number: string
+          id?: string
+          invoice_number?: string | null
+          item_code: string
+          qty_received: number
+          remarks?: string | null
+          uom: string
+          vendor?: string | null
+        }
+        Update: {
+          amount_inr?: number | null
+          created_at?: string
+          date?: string
+          grn_number?: string
+          id?: string
+          invoice_number?: string | null
+          item_code?: string
+          qty_received?: number
+          remarks?: string | null
+          uom?: string
+          vendor?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "satguru_grn_log_item_code_fkey"
+            columns: ["item_code"]
+            isOneToOne: false
+            referencedRelation: "satguru_item_master"
+            referencedColumns: ["item_code"]
+          },
+          {
+            foreignKeyName: "satguru_grn_log_item_code_fkey"
+            columns: ["item_code"]
+            isOneToOne: false
+            referencedRelation: "satguru_stock_summary"
+            referencedColumns: ["item_code"]
+          },
+        ]
+      }
+      satguru_issue_log: {
+        Row: {
+          created_at: string
+          date: string
+          id: string
+          item_code: string
+          purpose: string | null
+          qty_issued: number
+          remarks: string | null
+          total_issued_qty: number | null
+        }
+        Insert: {
+          created_at?: string
+          date?: string
+          id?: string
+          item_code: string
+          purpose?: string | null
+          qty_issued: number
+          remarks?: string | null
+          total_issued_qty?: number | null
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          id?: string
+          item_code?: string
+          purpose?: string | null
+          qty_issued?: number
+          remarks?: string | null
+          total_issued_qty?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "satguru_issue_log_item_code_fkey"
+            columns: ["item_code"]
+            isOneToOne: false
+            referencedRelation: "satguru_item_master"
+            referencedColumns: ["item_code"]
+          },
+          {
+            foreignKeyName: "satguru_issue_log_item_code_fkey"
+            columns: ["item_code"]
+            isOneToOne: false
+            referencedRelation: "satguru_stock_summary"
+            referencedColumns: ["item_code"]
+          },
+        ]
+      }
+      satguru_item_master: {
+        Row: {
+          auto_code: string | null
+          category_id: string | null
+          created_at: string
+          gsm: number | null
+          id: string
+          item_code: string
+          item_name: string
+          qualifier: string | null
+          size_mm: string | null
+          status: string
+          uom: string
+          updated_at: string
+          usage_type: string | null
+        }
+        Insert: {
+          auto_code?: string | null
+          category_id?: string | null
+          created_at?: string
+          gsm?: number | null
+          id?: string
+          item_code: string
+          item_name: string
+          qualifier?: string | null
+          size_mm?: string | null
+          status?: string
+          uom?: string
+          updated_at?: string
+          usage_type?: string | null
+        }
+        Update: {
+          auto_code?: string | null
+          category_id?: string | null
+          created_at?: string
+          gsm?: number | null
+          id?: string
+          item_code?: string
+          item_name?: string
+          qualifier?: string | null
+          size_mm?: string | null
+          status?: string
+          uom?: string
+          updated_at?: string
+          usage_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "satguru_item_master_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "satguru_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      satguru_stock: {
+        Row: {
+          current_qty: number
+          id: string
+          item_code: string
+          last_updated: string
+          opening_qty: number
+        }
+        Insert: {
+          current_qty?: number
+          id?: string
+          item_code: string
+          last_updated?: string
+          opening_qty?: number
+        }
+        Update: {
+          current_qty?: number
+          id?: string
+          item_code?: string
+          last_updated?: string
+          opening_qty?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "satguru_stock_item_code_fkey"
+            columns: ["item_code"]
+            isOneToOne: true
+            referencedRelation: "satguru_item_master"
+            referencedColumns: ["item_code"]
+          },
+          {
+            foreignKeyName: "satguru_stock_item_code_fkey"
+            columns: ["item_code"]
+            isOneToOne: true
+            referencedRelation: "satguru_stock_summary"
+            referencedColumns: ["item_code"]
           },
         ]
       }
@@ -3796,6 +4187,19 @@ export type Database = {
       }
     }
     Views: {
+      satguru_stock_summary: {
+        Row: {
+          category_name: string | null
+          current_qty: number | null
+          days_of_cover: number | null
+          item_code: string | null
+          item_name: string | null
+          opening_qty: number | null
+          total_grn_qty: number | null
+          total_issued_qty: number | null
+        }
+        Relationships: []
+      }
       v_stage_rollup_dkpkl: {
         Row: {
           last_done: string | null
@@ -4022,6 +4426,15 @@ export type Database = {
           p_remarks?: string
         }
         Returns: undefined
+      }
+      satguru_generate_item_code: {
+        Args: {
+          category_name: string
+          qualifier?: string
+          size_mm?: string
+          gsm?: number
+        }
+        Returns: string
       }
       set_limit: {
         Args: { "": number }

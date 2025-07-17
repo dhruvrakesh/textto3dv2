@@ -46,7 +46,7 @@ serve(async (req) => {
 
     // Use the RPC function to delete the job
     const { error: deleteError } = await supabaseClient
-      .rpc('delete_job', { p_job_id: jobId, p_user_id: userId })
+      .rpc('delete_job', { p_job_id: jobId, p_user_id: userId }, { schema: 't3d' })
 
     if (deleteError) {
       console.error('Delete job error:', deleteError)

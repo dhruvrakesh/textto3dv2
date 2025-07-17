@@ -46,7 +46,7 @@ serve(async (req) => {
 
     // Use the RPC function to retry the job
     const { error: retryError } = await supabaseClient
-      .rpc('retry_job', { p_job_id: jobId, p_user_id: userId })
+      .rpc('retry_job', { p_job_id: jobId, p_user_id: userId }, { schema: 't3d' })
 
     if (retryError) {
       console.error('Retry job error:', retryError)
