@@ -44,9 +44,9 @@ serve(async (req) => {
     const { jobId } = await req.json()
     console.log('Deleting job:', jobId, 'for user:', userId)
 
-    // Use the RPC function to delete the job
+    // Use the public wrapper function to delete the job
     const { error: deleteError } = await supabaseClient
-      .rpc('delete_job', { p_job_id: jobId, p_user_id: userId }, { schema: 't3d' })
+      .rpc('delete_job', { p_job_id: jobId, p_user_id: userId })
 
     if (deleteError) {
       console.error('Delete job error:', deleteError)
