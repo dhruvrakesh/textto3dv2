@@ -237,73 +237,82 @@ const ModelViewer = ({ model, isGenerating, job }: ModelViewerProps) => {
           sceneRef.current.remove(modelRef.current);
         }
 
-        loader.load(
-          model,
-          async (gltf) => {
-            console.log('Model loaded successfully');
-            const loadedModel = gltf.scene;
-            
-            // Scale and position the model
-            const box = new THREE.Box3().setFromObject(loadedModel);
-            const size = box.getSize(new THREE.Vector3()).length();
-            const center = box.getCenter(new THREE.Vector3());
-            
-            loadedModel.position.x += (loadedModel.position.x - center.x);
-            loadedModel.position.y += (loadedModel.position.y - center.y);
-            loadedModel.position.z += (loadedModel.position.z - center.z);
-            
-            // Scale to fit in scene
-            const scaleFactor = 4 / size;
-            loadedModel.scale.setScalar(scaleFactor);
-            
-            // Enable shadows
-            loadedModel.traverse((child: any) => {
-              if (child.isMesh) {
-                child.castShadow = true;
-                child.receiveShadow = true;
-              }
-            });
-            
-            sceneRef.current.add(loadedModel);
-            modelRef.current = loadedModel;
-            
-            // Auto-rotate for better showcase
-            if (controlsRef.current) {
-              controlsRef.current.autoRotate = true;
-            }
-          },
-          (progress) => {
-            console.log('Loading progress:', (progress.loaded / progress.total * 100) + '%');
-          },
-          (error) => {
-            console.error('Error loading model:', error);
-            // Show error message instead of crashing
-            const errorMessage = `Failed to load 3D model: ${error.message || 'Network error'}`;
-            console.warn(errorMessage);
-            
-            // Create a simple error display
-            if (sceneRef.current) {
-              const errorGroup = new THREE.Group();
+        // Add retry logic for model loading
+        const loadModelWithRetry = async (url: string, retries = 3) => {
+          for (let attempt = 1; attempt <= retries; attempt++) {
+            try {
+              console.log(`Loading model attempt ${attempt}/${retries}`);
               
-              // Create error indicator box
-              const geometry = new THREE.BoxGeometry(2, 2, 2);
-              const material = new THREE.MeshPhongMaterial({ 
-                color: 0xff4444,
-                transparent: true,
-                opacity: 0.7
+              // First check if URL is accessible
+              const response = await fetch(url, { method: 'HEAD' });
+              if (!response.ok) {
+                throw new Error(`Model URL not accessible: ${response.status} ${response.statusText}`);
+              }
+              
+              await new Promise((resolve, reject) => {
+                loader.load(
+                  url,
+                  async (gltf) => {
+                    console.log('Model loaded successfully');
+                    const loadedModel = gltf.scene;
+                    
+                    // Scale and position the model
+                    const box = new THREE.Box3().setFromObject(loadedModel);
+                    const size = box.getSize(new THREE.Vector3()).length();
+                    const center = box.getCenter(new THREE.Vector3());
+                    
+                    loadedModel.position.x += (loadedModel.position.x - center.x);
+                    loadedModel.position.y += (loadedModel.position.y - center.y);
+                    loadedModel.position.z += (loadedModel.position.z - center.z);
+                    
+                    // Scale to fit in scene
+                    const scaleFactor = 4 / size;
+                    loadedModel.scale.setScalar(scaleFactor);
+                    
+                    // Enable shadows
+                    loadedModel.traverse((child: any) => {
+                      if (child.isMesh) {
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+                      }
+                    });
+                    
+                    sceneRef.current.add(loadedModel);
+                    modelRef.current = loadedModel;
+                    resolve(gltf);
+                  },
+                  (progress) => {
+                    console.log('Loading progress:', progress);
+                  },
+                  (error) => {
+                    reject(error);
+                  }
+                );
               });
-              const errorBox = new THREE.Mesh(geometry, material);
-              errorBox.position.set(0, 1, 0);
-              errorGroup.add(errorBox);
               
-              if (modelRef.current) {
-                sceneRef.current.remove(modelRef.current);
+              return; // Success, exit retry loop
+              
+            } catch (error) {
+              console.error(`Model loading attempt ${attempt} failed:`, error);
+              
+              if (attempt === retries) {
+                // Final attempt failed - set error state
+                console.error('All model loading attempts failed');
+                throw error;
+              } else {
+                // Wait before retry (exponential backoff)
+                await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
               }
-              sceneRef.current.add(errorGroup);
-              modelRef.current = errorGroup;
             }
           }
-        );
+        };
+
+        await loadModelWithRetry(model);
+        
+        // Auto-rotate for better showcase
+        if (controlsRef.current) {
+          controlsRef.current.autoRotate = true;
+        }
       } catch (error) {
         console.error('Error setting up model loader:', error);
       }

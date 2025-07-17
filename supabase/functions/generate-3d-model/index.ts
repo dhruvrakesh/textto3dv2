@@ -319,13 +319,21 @@ serve(async (req) => {
     
     const demoModelUrl = "https://threejs.org/examples/models/gltf/DamagedHelmet/glTF-Binary/DamagedHelmet.glb";
     
-    await supabaseClient.rpc('update_job_status', {
+    console.log("Updating job status with demo model URL:", demoModelUrl);
+    const { error: demoUpdateError } = await supabaseClient.rpc('update_job_status', {
       p_job_id: jobId,
       p_status: 'done', // Use 'done' to match database schema
       p_progress: 100,
       p_result_url: demoModelUrl,
       p_job_type: 'demo'
     });
+
+    if (demoUpdateError) {
+      console.error("Failed to update job with demo model:", demoUpdateError);
+      throw new Error(`Failed to save demo model URL: ${demoUpdateError.message}`);
+    }
+    
+    console.log("Successfully updated job with demo model URL");
 
     return new Response(
       JSON.stringify({ 

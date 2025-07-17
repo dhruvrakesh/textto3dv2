@@ -79,24 +79,47 @@ export const useJobs = () => {
   useEffect(() => {
     if (!user?.id) return;
 
-    console.log('Setting up polling for job updates');
+    console.log('Setting up intelligent polling for job updates');
     
-    const pollInterval = setInterval(async () => {
-      // Only poll if there are active jobs
-      const currentJobs = queryClient.getQueryData(['jobs', user.id]) as Job[] || [];
-      const hasActiveJobs = currentJobs.some(job => 
-        job.status === 'queued' || job.status === 'running'
-      );
-      
-      if (hasActiveJobs) {
-        console.log('Polling for job updates...');
-        queryClient.invalidateQueries({ queryKey: ['jobs', user.id] });
+    let pollInterval = 2000; // Start with 2 seconds
+    const maxInterval = 10000; // Max 10 seconds
+    let errorCount = 0;
+    
+    const poll = async () => {
+      try {
+        // Only poll if there are active jobs
+        const currentJobs = queryClient.getQueryData(['jobs', user.id]) as Job[] || [];
+        const hasActiveJobs = currentJobs.some(job => 
+          job.status === 'queued' || job.status === 'running'
+        );
+        
+        if (hasActiveJobs) {
+          console.log('Polling for job updates...');
+          queryClient.invalidateQueries({ queryKey: ['jobs', user.id] });
+          
+          // Reset error count and interval on successful poll
+          errorCount = 0;
+          pollInterval = 2000;
+        }
+      } catch (error) {
+        console.error('Error during job polling:', error);
+        errorCount++;
+        
+        // Increase interval on repeated errors (exponential backoff)
+        if (errorCount > 2) {
+          pollInterval = Math.min(pollInterval * 1.5, maxInterval);
+          console.log(`Increased poll interval to ${pollInterval}ms due to errors`);
+        }
       }
-    }, 3000); // Poll every 3 seconds when there are active jobs
+    };
+    
+    // Start polling immediately
+    poll();
+    const intervalId = setInterval(poll, pollInterval);
 
     return () => {
       console.log('Cleaning up job polling');
-      clearInterval(pollInterval);
+      clearInterval(intervalId);
     };
   }, [user?.id, queryClient]);
 

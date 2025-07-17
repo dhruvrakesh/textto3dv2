@@ -5,7 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import PromptWizard from "@/components/PromptWizard";
 import ModelViewer from "@/components/ModelViewer";
 import GenerationHistory from "@/components/GenerationHistory";
-import ErrorBoundary from "@/components/ErrorBoundary";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const Index = () => {
   const [showWizard, setShowWizard] = useState(false);
