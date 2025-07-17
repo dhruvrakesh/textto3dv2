@@ -2,9 +2,12 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Clock, Eye, Download, Trash2 } from "lucide-react";
+import { ProgressBar } from "@/components/ProgressBar";
+import { Clock, Eye, Download, Trash2, AlertCircle, CheckCircle, Loader } from "lucide-react";
 import { useJobs, Job } from "@/hooks/useJobs";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
+import { formatDistanceToNow } from "date-fns";
 
 interface GenerationHistoryProps {
   onView?: (item: Job) => void;
@@ -109,44 +112,68 @@ const GenerationHistory = ({ onView, onDelete }: GenerationHistoryProps) => {
               className="p-4 bg-background/30 rounded-lg border border-border/30 hover:border-border/50 transition-colors"
             >
               <div className="space-y-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 space-y-1">
-                    <p className="text-sm font-medium text-foreground">
-                      {job.prompts?.style} {job.prompts?.space_type?.replace('_', ' ')}
-                    </p>
-                    <p className="text-xs text-muted-foreground line-clamp-2">
-                      {job.prompts?.description || 'No description available'}
-                    </p>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-medium text-foreground line-clamp-1">
+                      {job.prompts?.space_type} - {job.prompts?.style}
+                    </h4>
+                    <Badge 
+                      variant={
+                        job.status === 'completed' ? 'default' : 
+                        job.status === 'failed' ? 'destructive' : 
+                        'secondary'
+                      }
+                      className={cn(
+                        "text-xs",
+                        job.status === 'processing' && "animate-pulse"
+                      )}
+                    >
+                      {job.status === 'processing' ? (
+                        <div className="flex items-center gap-1">
+                          <Loader className="w-3 h-3 animate-spin" />
+                          Processing
+                        </div>
+                      ) : job.status === 'completed' ? (
+                        <div className="flex items-center gap-1">
+                          <CheckCircle className="w-3 h-3" />
+                          Completed
+                        </div>
+                      ) : job.status === 'failed' ? (
+                        <div className="flex items-center gap-1">
+                          <AlertCircle className="w-3 h-3" />
+                          Failed
+                        </div>
+                      ) : (
+                        'Queued'
+                      )}
+                    </Badge>
                   </div>
-                  <Badge 
-                    variant="outline" 
-                    className={`text-xs ${getStatusColor(job.status)} flex-shrink-0`}
-                  >
-                    {job.status}
-                  </Badge>
+                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    {formatDistanceToNow(new Date(job.created_at))} ago
+                  </span>
                 </div>
 
-                {job.status === 'processing' && (
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-xs">
-                      <span>Progress</span>
-                      <span>{job.progress}%</span>
-                    </div>
-                    <div className="w-full bg-muted rounded-full h-1.5">
-                      <div 
-                        className="bg-primary h-1.5 rounded-full transition-all" 
-                        style={{ width: `${job.progress}%` }}
-                      />
-                    </div>
-                  </div>
+                {/* Enhanced Progress Bar for active jobs */}
+                {(job.status === 'processing' || job.status === 'queued') && (
+                  <ProgressBar 
+                    progress={job.progress || 0} 
+                    status={job.status}
+                    showETA={true}
+                    className="my-2"
+                  />
                 )}
 
+                {/* Error message for failed jobs */}
                 {job.status === 'failed' && job.error_message && (
-                  <div className="text-xs text-red-400 p-2 bg-red-500/10 rounded">
+                  <div className="p-2 bg-destructive/10 border border-destructive/20 rounded text-xs text-destructive">
                     {job.error_message}
                   </div>
                 )}
 
+                <p className="text-sm text-muted-foreground line-clamp-2">
+                  {job.prompts?.description || 'No description available'}
+                </p>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center text-xs text-muted-foreground space-x-4">
                     <div className="flex items-center">
