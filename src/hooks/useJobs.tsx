@@ -103,7 +103,7 @@ export const useJobs = () => {
       console.log('Cleaning up t3d jobs subscription');
       supabase.removeChannel(channel);
     };
-  }, [user, queryClient]);
+  }, [user?.id]); // Only depend on user.id to prevent unnecessary subscription recreation
 
   const processPrompt = async (promptData: any) => {
     if (!user) throw new Error('User not authenticated');
