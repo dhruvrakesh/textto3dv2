@@ -82,25 +82,14 @@ export const ProgressBar = ({
         )}
       </div>
 
-      {/* Stage Indicators */}
-      <div className="flex justify-between text-xs">
-        {['Queued', 'Processing', 'Generating', 'Finalizing'].map((stage, index) => {
-          const stageProgress = (index + 1) * 25;
-          const isActive = progress >= stageProgress;
-          
-          return (
-            <span
-              key={stage}
-              className={cn(
-                "transition-colors duration-500",
-                isActive ? "text-primary font-medium" : "text-muted-foreground"
-              )}
-            >
-              {stage}
-            </span>
-          );
-        })}
-      </div>
+      {/* Stage Indicators - Only show current stage */}
+      {!isCompleted && !isFailed && (
+        <div className="text-center">
+          <span className="text-xs text-primary font-medium">
+            {currentStage}
+          </span>
+        </div>
+      )}
     </div>
   );
 };

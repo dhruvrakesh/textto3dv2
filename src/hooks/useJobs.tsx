@@ -77,12 +77,13 @@ export const useJobs = () => {
 
   // Set up real-time subscription for job updates with enhanced progress tracking
   useEffect(() => {
-    if (!user) return;
+    if (!user?.id) return;
 
+    let isSubscribed = true;
     console.log('Setting up real-time subscription for t3d.jobs');
     
     const channel = supabase
-      .channel('t3d-jobs-changes')
+      .channel(`t3d-jobs-${user.id}`, { config: { broadcast: { self: false } } })
       .on(
         'postgres_changes',
         {
@@ -92,6 +93,8 @@ export const useJobs = () => {
           filter: `user_id=eq.${user.id}`
         },
         (payload) => {
+          if (!isSubscribed) return;
+          
           console.log('Job update received:', payload);
           
           // Transform the job data with status translation
@@ -122,13 +125,16 @@ export const useJobs = () => {
           });
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Subscription status:', status);
+      });
 
     return () => {
+      isSubscribed = false;
       console.log('Cleaning up t3d jobs subscription');
       supabase.removeChannel(channel);
     };
-  }, [user?.id]); // Only depend on user.id to prevent unnecessary subscription recreation
+  }, [user?.id, queryClient]); // Include queryClient to prevent stale closures
 
   const processPrompt = async (promptData: any) => {
     if (!user) throw new Error('User not authenticated');

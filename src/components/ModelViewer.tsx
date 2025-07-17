@@ -277,6 +277,18 @@ const ModelViewer = ({ model, isGenerating, job }: ModelViewerProps) => {
           },
           (error) => {
             console.error('Error loading model:', error);
+            // Show error state in the viewer
+            if (sceneRef.current && !modelRef.current) {
+              // Create error display text geometry
+              const errorText = new THREE.Group();
+              // Add a simple error indicator instead of crashing
+              const geometry = new THREE.BoxGeometry(1, 1, 1);
+              const material = new THREE.MeshPhongMaterial({ color: 0xff0000 });
+              const errorBox = new THREE.Mesh(geometry, material);
+              errorText.add(errorBox);
+              sceneRef.current.add(errorText);
+              modelRef.current = errorText;
+            }
           }
         );
       } catch (error) {
