@@ -314,10 +314,10 @@ serve(async (req) => {
       }
     }
 
-    // If both APIs fail, create a demo model for testing
-    console.log("Both APIs failed, creating demo model for testing...");
+    // If both APIs fail, provide a working demo model for testing
+    console.log("Both APIs failed, providing working demo model for testing...");
     
-    const demoModelUrl = "https://threejs.org/examples/models/gltf/DamagedHelmet/glTF/DamagedHelmet.gltf";
+    const demoModelUrl = "https://threejs.org/examples/models/gltf/DamagedHelmet/glTF-Binary/DamagedHelmet.glb";
     
     await supabaseClient.rpc('update_job_status', {
       p_job_id: jobId,

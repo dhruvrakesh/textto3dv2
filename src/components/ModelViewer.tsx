@@ -277,17 +277,30 @@ const ModelViewer = ({ model, isGenerating, job }: ModelViewerProps) => {
           },
           (error) => {
             console.error('Error loading model:', error);
-            // Show error state in the viewer
-            if (sceneRef.current && !modelRef.current) {
-              // Create error display text geometry
-              const errorText = new THREE.Group();
-              // Add a simple error indicator instead of crashing
-              const geometry = new THREE.BoxGeometry(1, 1, 1);
-              const material = new THREE.MeshPhongMaterial({ color: 0xff0000 });
+            // Show error message instead of crashing
+            const errorMessage = `Failed to load 3D model: ${error.message || 'Network error'}`;
+            console.warn(errorMessage);
+            
+            // Create a simple error display
+            if (sceneRef.current) {
+              const errorGroup = new THREE.Group();
+              
+              // Create error indicator box
+              const geometry = new THREE.BoxGeometry(2, 2, 2);
+              const material = new THREE.MeshPhongMaterial({ 
+                color: 0xff4444,
+                transparent: true,
+                opacity: 0.7
+              });
               const errorBox = new THREE.Mesh(geometry, material);
-              errorText.add(errorBox);
-              sceneRef.current.add(errorText);
-              modelRef.current = errorText;
+              errorBox.position.set(0, 1, 0);
+              errorGroup.add(errorBox);
+              
+              if (modelRef.current) {
+                sceneRef.current.remove(modelRef.current);
+              }
+              sceneRef.current.add(errorGroup);
+              modelRef.current = errorGroup;
             }
           }
         );

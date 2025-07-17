@@ -75,66 +75,30 @@ export const useJobs = () => {
     retry: false, // Don't retry failed requests
   });
 
-  // Set up real-time subscription for job updates with enhanced progress tracking
+  // Set up polling for job updates to avoid subscription cycling issues
   useEffect(() => {
     if (!user?.id) return;
 
-    let isSubscribed = true;
-    console.log('Setting up real-time subscription for t3d.jobs');
+    console.log('Setting up polling for job updates');
     
-    const channel = supabase
-      .channel(`t3d-jobs-${user.id}`, { config: { broadcast: { self: false } } })
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 't3d',
-          table: 'jobs',
-          filter: `user_id=eq.${user.id}`
-        },
-        (payload) => {
-          if (!isSubscribed) return;
-          
-          console.log('Job update received:', payload);
-          
-          // Transform the job data with status translation
-          const transformJob = (job: any) => ({
-            ...job,
-            status: translateStatus(job.status)
-          });
-          
-          // Update the query cache with translated status
-          queryClient.setQueryData(['jobs', user.id], (oldData: Job[] | undefined) => {
-            if (!oldData) return oldData;
-            
-            const rawJob = payload.new as any;
-            const updatedJob = transformJob(rawJob);
-            const existingJobIndex = oldData.findIndex(job => job.id === updatedJob.id);
-            
-            if (existingJobIndex >= 0) {
-              // Update existing job
-              const newData = [...oldData];
-              newData[existingJobIndex] = { ...newData[existingJobIndex], ...updatedJob };
-              return newData;
-            } else if (payload.eventType === 'INSERT') {
-              // Add new job
-              return [updatedJob, ...oldData];
-            }
-            
-            return oldData;
-          });
-        }
-      )
-      .subscribe((status) => {
-        console.log('Subscription status:', status);
-      });
+    const pollInterval = setInterval(async () => {
+      // Only poll if there are active jobs
+      const currentJobs = queryClient.getQueryData(['jobs', user.id]) as Job[] || [];
+      const hasActiveJobs = currentJobs.some(job => 
+        job.status === 'queued' || job.status === 'running'
+      );
+      
+      if (hasActiveJobs) {
+        console.log('Polling for job updates...');
+        queryClient.invalidateQueries({ queryKey: ['jobs', user.id] });
+      }
+    }, 3000); // Poll every 3 seconds when there are active jobs
 
     return () => {
-      isSubscribed = false;
-      console.log('Cleaning up t3d jobs subscription');
-      supabase.removeChannel(channel);
+      console.log('Cleaning up job polling');
+      clearInterval(pollInterval);
     };
-  }, [user?.id, queryClient]); // Include queryClient to prevent stale closures
+  }, [user?.id, queryClient]);
 
   const processPrompt = async (promptData: any) => {
     if (!user) throw new Error('User not authenticated');
