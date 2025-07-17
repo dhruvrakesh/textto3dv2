@@ -44,12 +44,14 @@ serve(async (req) => {
     const { jobId } = await req.json()
     console.log('Retrying job:', jobId, 'for user:', userId)
 
-    // FIX: Call the correct RPC 'retry_job' and pass the user_id for authorization
+    // FIX: Call the correct RPC 't3d.retry_job' and pass the user_id for authorization
     const { error: retryError } = await supabaseClient
       .rpc('retry_job', {
         p_job_id: jobId,
         p_user_id: userId
       })
+      .select()
+      .schema('t3d')
 
     if (retryError) {
       console.error('Retry job error:', retryError)
