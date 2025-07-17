@@ -46,6 +46,7 @@ serve(async (req) => {
 
     // Reset the job status to queued so it can be processed again
     const { error: retryError } = await supabaseClient
+      .schema('t3d')
       .from('jobs')
       .update({
         status: 'queued',
