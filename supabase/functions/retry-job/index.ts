@@ -44,18 +44,14 @@ serve(async (req) => {
     const { jobId } = await req.json()
     console.log('Retrying job:', jobId, 'for user:', userId)
 
-    // Reset the job status to queued so it can be processed again
+    // Reset the job status to queued so it can be processed again using the t3d function
     const { error: retryError } = await supabaseClient
-      .schema('t3d')
-      .from('jobs')
-      .update({
-        status: 'queued',
-        progress: 0,
-        error_message: null,
-        updated_at: new Date().toISOString()
+      .rpc('t3d.update_job_status', {
+        p_job_id: jobId,
+        p_status: 'queued',
+        p_progress: 0,
+        p_error_message: null
       })
-      .eq('id', jobId)
-      .eq('user_id', userId)
 
     if (retryError) {
       console.error('Retry job error:', retryError)
