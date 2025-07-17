@@ -29,10 +29,12 @@ export const translateStatus = (dbStatus: string): 'queued' | 'running' | 'compl
   switch (dbStatus) {
     case 'done':
       return 'completed';
+    case 'error':
+    case 'failed':
+      return 'failed';
     case 'queued':
     case 'running':
-    case 'failed':
-      return dbStatus as 'queued' | 'running' | 'failed';
+      return dbStatus as 'queued' | 'running';
     default:
       return 'queued';
   }
@@ -88,11 +90,12 @@ export const useJobs = () => {
     
     const poll = async () => {
       try {
-        // Only poll if there are active jobs
+        // Only poll if there are active jobs (failed/completed jobs don't need polling)
         const currentJobs = queryClient.getQueryData(['jobs', user.id]) as Job[] || [];
-        const hasActiveJobs = currentJobs.some(job => 
-          job.status === 'queued' || job.status === 'running'
-        );
+        const hasActiveJobs = currentJobs.some(job => {
+          const translatedStatus = translateStatus(job.status);
+          return translatedStatus === 'queued' || translatedStatus === 'running';
+        });
         
         if (hasActiveJobs) {
           console.log(`Polling for job updates (interval: ${pollInterval}ms)...`);
