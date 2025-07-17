@@ -44,9 +44,17 @@ serve(async (req) => {
     const { jobId } = await req.json()
     console.log('Retrying job:', jobId, 'for user:', userId)
 
-    // Use the RPC function to retry the job
+    // Reset the job status to queued so it can be processed again
     const { error: retryError } = await supabaseClient
-      .rpc('retry_job', { p_job_id: jobId, p_user_id: userId }, { schema: 't3d' })
+      .from('jobs')
+      .update({
+        status: 'queued',
+        progress: 0,
+        error_message: null,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', jobId)
+      .eq('user_id', userId)
 
     if (retryError) {
       console.error('Retry job error:', retryError)

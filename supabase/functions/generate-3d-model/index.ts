@@ -196,7 +196,7 @@ serve(async (req) => {
 
     // Update job to running status
     const { error: updateError } = await supabaseClient
-      .from('user_jobs')
+      .from('jobs')
       .update({
         status: 'running',
         progress: 5,
@@ -211,7 +211,7 @@ serve(async (req) => {
     // Step 1: Try Replicate API first (Primary)
     console.log("Attempting 3D generation with Replicate API...");
     await supabaseClient
-      .from('user_jobs')
+      .from('jobs')
       .update({
         status: 'running',
         progress: 15,
@@ -232,7 +232,7 @@ serve(async (req) => {
         
         const progress = Math.min(20 + (attempts * 2), 80);
         await supabaseClient
-          .from('user_jobs')
+          .from('jobs')
           .update({
             status: 'running',
             progress: progress,
@@ -252,11 +252,11 @@ serve(async (req) => {
           if (uploadResult.success) {
             // Complete the job
             await supabaseClient
-              .from('user_jobs')
+              .from('jobs')
               .update({
-                status: 'completed',
+                status: 'done',
                 progress: 100,
-                model_url: uploadResult.url,
+                result_url: uploadResult.url,
                 updated_at: new Date().toISOString()
               })
               .eq('id', jobId);
@@ -285,7 +285,7 @@ serve(async (req) => {
     // Step 2: Fallback to Hugging Face
     console.log("Attempting 3D generation with Hugging Face API...");
     await supabaseClient
-      .from('user_jobs')
+      .from('jobs')
       .update({
         status: 'running',
         progress: 85,
@@ -305,11 +305,11 @@ serve(async (req) => {
       if (uploadResult.success) {
         // Complete the job
         await supabaseClient
-          .from('user_jobs')
+          .from('jobs')
           .update({
-            status: 'completed',
+            status: 'done',
             progress: 100,
-            model_url: uploadResult.url,
+            result_url: uploadResult.url,
             updated_at: new Date().toISOString()
           })
           .eq('id', jobId);
@@ -351,11 +351,11 @@ serve(async (req) => {
     
     console.log("Updating job status with demo model URL:", demoModelUrl);
     const { error: demoUpdateError } = await supabaseClient
-      .from('user_jobs')
+      .from('jobs')
       .update({
-        status: 'completed',
+        status: 'done',
         progress: 100,
-        model_url: demoModelUrl,
+        result_url: demoModelUrl,
         updated_at: new Date().toISOString()
       })
       .eq('id', jobId);
@@ -370,8 +370,8 @@ serve(async (req) => {
     
     // Verify the update worked by querying the job
     const { data: verifyData, error: verifyError } = await supabaseClient
-      .from('user_jobs')
-      .select('id, model_url, status')
+      .from('jobs')
+      .select('id, result_url, status')
       .eq('id', jobId)
       .single();
       
@@ -408,9 +408,9 @@ serve(async (req) => {
         );
         
         await supabaseClient
-          .from('user_jobs')
+          .from('jobs')
           .update({
-            status: 'failed',
+            status: 'error',
             error_message: error.message,
             updated_at: new Date().toISOString()
           })
