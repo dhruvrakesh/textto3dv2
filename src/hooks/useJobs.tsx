@@ -8,7 +8,7 @@ export interface Job {
   id: string;
   prompt_id: string;
   user_id: string;
-  status: 'queued' | 'running' | 'completed' | 'failed';
+  status: 'queued' | 'running' | 'completed' | 'failed' | 'done';
   progress: number;
   result_url?: string;
   job_type?: string;
@@ -23,6 +23,20 @@ export interface Job {
     json: any;
   };
 }
+
+// Status translation function to map database statuses to UI statuses
+export const translateStatus = (dbStatus: string): 'queued' | 'running' | 'completed' | 'failed' => {
+  switch (dbStatus) {
+    case 'done':
+      return 'completed';
+    case 'queued':
+    case 'running':
+    case 'failed':
+      return dbStatus as 'queued' | 'running' | 'failed';
+    default:
+      return 'queued';
+  }
+};
 
 export const useJobs = () => {
   const { user } = useAuth();
@@ -45,7 +59,13 @@ export const useJobs = () => {
           return []; // Return empty array instead of throwing
         }
         
-        return (data || []) as Job[];
+        // Transform the data to ensure status translation
+        const transformedJobs = (data || []).map((job: any) => ({
+          ...job,
+          status: translateStatus(job.status)
+        }));
+        
+        return transformedJobs as Job[];
       } catch (err) {
         console.error('Jobs fetch failed:', err);
         return []; // Return empty array instead of throwing
@@ -73,11 +93,19 @@ export const useJobs = () => {
         },
         (payload) => {
           console.log('Job update received:', payload);
-          // Immediately update the query cache with new data for real-time progress
+          
+          // Transform the job data with status translation
+          const transformJob = (job: any) => ({
+            ...job,
+            status: translateStatus(job.status)
+          });
+          
+          // Update the query cache with translated status
           queryClient.setQueryData(['jobs', user.id], (oldData: Job[] | undefined) => {
             if (!oldData) return oldData;
             
-            const updatedJob = payload.new as Job;
+            const rawJob = payload.new as any;
+            const updatedJob = transformJob(rawJob);
             const existingJobIndex = oldData.findIndex(job => job.id === updatedJob.id);
             
             if (existingJobIndex >= 0) {
@@ -92,9 +120,6 @@ export const useJobs = () => {
             
             return oldData;
           });
-          
-          // Also invalidate to ensure consistency
-          queryClient.invalidateQueries({ queryKey: ['jobs', user.id] });
         }
       )
       .subscribe();

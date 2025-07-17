@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ProgressBar } from "@/components/ProgressBar";
 import { Clock, Eye, Download, Trash2, AlertCircle, CheckCircle, Loader, RotateCcw } from "lucide-react";
-import { useJobs, Job } from "@/hooks/useJobs";
+import { useJobs, Job, translateStatus } from "@/hooks/useJobs";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
@@ -20,7 +20,8 @@ const GenerationHistory = ({ onView, onDelete, onRetry }: GenerationHistoryProps
   const { toast } = useToast();
 
   const getStatusColor = (status: Job["status"]) => {
-    switch (status) {
+    const translatedStatus = translateStatus(status);
+    switch (translatedStatus) {
       case "queued":
       case "running":
         return "bg-primary/20 text-primary border-primary/30";
@@ -42,7 +43,8 @@ const GenerationHistory = ({ onView, onDelete, onRetry }: GenerationHistoryProps
   };
 
   const handleView = (job: Job) => {
-    if (job.status === 'completed' && job.result_url) {
+    const translatedStatus = translateStatus(job.status);
+    if (translatedStatus === 'completed' && job.result_url) {
       onView?.(job);
     } else {
       toast({
@@ -54,7 +56,8 @@ const GenerationHistory = ({ onView, onDelete, onRetry }: GenerationHistoryProps
   };
 
   const handleDownload = (job: Job) => {
-    if (job.status === 'completed' && job.result_url) {
+    const translatedStatus = translateStatus(job.status);
+    if (translatedStatus === 'completed' && job.result_url) {
       window.open(job.result_url, '_blank');
     } else {
       toast({
@@ -120,26 +123,26 @@ const GenerationHistory = ({ onView, onDelete, onRetry }: GenerationHistoryProps
                     </h4>
                     <Badge 
                       variant={
-                        job.status === 'completed' ? 'default' : 
-                        job.status === 'failed' ? 'destructive' : 
+                        translateStatus(job.status) === 'completed' ? 'default' : 
+                        translateStatus(job.status) === 'failed' ? 'destructive' : 
                         'secondary'
                       }
                       className={cn(
                         "text-xs",
-                        job.status === 'running' && "animate-pulse"
+                        translateStatus(job.status) === 'running' && "animate-pulse"
                       )}
                     >
-                      {job.status === 'running' ? (
+                      {translateStatus(job.status) === 'running' ? (
                         <div className="flex items-center gap-1">
                           <Loader className="w-3 h-3 animate-spin" />
                           Running
                         </div>
-                      ) : job.status === 'completed' ? (
+                      ) : translateStatus(job.status) === 'completed' ? (
                         <div className="flex items-center gap-1">
                           <CheckCircle className="w-3 h-3" />
                           Completed
                         </div>
-                      ) : job.status === 'failed' ? (
+                      ) : translateStatus(job.status) === 'failed' ? (
                         <div className="flex items-center gap-1">
                           <AlertCircle className="w-3 h-3" />
                           Failed
@@ -156,17 +159,17 @@ const GenerationHistory = ({ onView, onDelete, onRetry }: GenerationHistoryProps
                 </div>
 
                 {/* Enhanced Progress Bar for active jobs */}
-                {(job.status === 'running' || job.status === 'queued') && (
+                {(translateStatus(job.status) === 'running' || translateStatus(job.status) === 'queued') && (
                   <ProgressBar 
                     progress={job.progress || 0} 
-                    status={job.status}
+                    status={translateStatus(job.status)}
                     showETA={true}
                     className="my-2"
                   />
                 )}
 
                 {/* Error message for failed jobs */}
-                {job.status === 'failed' && job.error_message && (
+                {translateStatus(job.status) === 'failed' && job.error_message && (
                   <div className="p-2 bg-destructive/10 border border-destructive/20 rounded text-xs text-destructive">
                     {job.error_message}
                   </div>
@@ -185,7 +188,7 @@ const GenerationHistory = ({ onView, onDelete, onRetry }: GenerationHistoryProps
                   </div>
 
                   <div className="flex items-center gap-2">
-                    {job.status === "completed" && (
+                    {translateStatus(job.status) === "completed" && (
                       <>
                         <Button 
                           variant="outline" 
@@ -208,7 +211,7 @@ const GenerationHistory = ({ onView, onDelete, onRetry }: GenerationHistoryProps
                       </>
                     )}
                     {/* Retry Button - Only for failed jobs */}
-                    {job.status === 'failed' && onRetry && (
+                    {translateStatus(job.status) === 'failed' && onRetry && (
                       <Button 
                         variant="outline" 
                         size="sm"

@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 
 interface ProgressBarProps {
   progress: number;
-  status?: 'queued' | 'running' | 'completed' | 'failed';
+  status?: 'queued' | 'running' | 'completed' | 'failed' | 'done';
   showETA?: boolean;
   className?: string;
 }
@@ -34,7 +34,7 @@ export const ProgressBar = ({
 }: ProgressBarProps) => {
   const currentStage = getProgressStage(progress);
   const eta = getEstimatedTime(progress);
-  const isCompleted = status === 'completed' || progress >= 100;
+  const isCompleted = status === 'completed' || status === 'done' || progress >= 100;
   const isFailed = status === 'failed';
 
   return (

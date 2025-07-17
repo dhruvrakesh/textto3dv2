@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { useJobs, Job } from "@/hooks/useJobs";
+import { useJobs, Job, translateStatus } from "@/hooks/useJobs";
 import { useToast } from "@/hooks/use-toast";
 import PromptWizard from "@/components/PromptWizard";
 import ModelViewer from "@/components/ModelViewer";
@@ -16,14 +16,17 @@ const Index = () => {
 
   // Find any running job to show in the viewer
   useEffect(() => {
-    const processingJob = jobs.find(job => job.status === 'running' || job.status === 'queued');
+    const processingJob = jobs.find(job => {
+      const status = translateStatus(job.status);
+      return status === 'running' || status === 'queued';
+    });
     if (processingJob) {
       setCurrentJob(processingJob);
       setCurrentModel(undefined); // Clear model while generating
     } else {
       // Show the most recent completed job if no processing job
       const completedJob = jobs
-        .filter(job => job.status === 'completed' && job.result_url)
+        .filter(job => translateStatus(job.status) === 'completed' && job.result_url)
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
       
       if (completedJob) {
@@ -45,7 +48,7 @@ const Index = () => {
   };
 
   const handleViewJob = (job: Job) => {
-    if (job.status === 'completed' && job.result_url) {
+    if (translateStatus(job.status) === 'completed' && job.result_url) {
       setCurrentModel(job.result_url);
       setCurrentJob(job);
       toast({
@@ -131,7 +134,7 @@ const Index = () => {
             <ErrorBoundary>
               <ModelViewer 
                 model={currentModel}
-                isGenerating={currentJob?.status === 'running' || currentJob?.status === 'queued'}
+                isGenerating={currentJob ? (translateStatus(currentJob.status) === 'running' || translateStatus(currentJob.status) === 'queued') : false}
                 job={currentJob}
               />
             </ErrorBoundary>
@@ -150,16 +153,16 @@ const Index = () => {
               
               {currentJob && (
                 <div className="text-center text-sm text-muted-foreground">
-                  {currentJob.status === 'running' || currentJob.status === 'queued' ? (
+                  {translateStatus(currentJob.status) === 'running' || translateStatus(currentJob.status) === 'queued' ? (
                     <span className="flex items-center justify-center gap-2">
                       <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
                       Generating your space...
                     </span>
-                  ) : currentJob.status === 'completed' ? (
+                  ) : translateStatus(currentJob.status) === 'completed' ? (
                     <span className="text-green-400">
                       ✓ Generation complete
                     </span>
-                  ) : currentJob.status === 'failed' ? (
+                  ) : translateStatus(currentJob.status) === 'failed' ? (
                     <span className="text-red-400">
                       ✗ Generation failed
                     </span>
