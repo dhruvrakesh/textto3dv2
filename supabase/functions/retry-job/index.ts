@@ -6,6 +6,21 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Helper function to decode JWT and extract user_id
+function decodeJWT(token: string): { userId: string } {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+      throw new Error('Invalid JWT format');
+    }
+    
+    const payload = JSON.parse(atob(parts[1]));
+    return { userId: payload.sub };
+  } catch (error) {
+    throw new Error('Failed to decode JWT token');
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -14,24 +29,24 @@ serve(async (req) => {
   try {
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     )
 
     // Get the authorization header
-    const authHeader = req.headers.get('Authorization')!
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      throw new Error('Authorization header missing or invalid');
+    }
+    
+    const token = authHeader.replace('Bearer ', '')
+    const { userId } = decodeJWT(token)
     
     const { jobId } = await req.json()
-    console.log('Retrying job:', jobId)
-
-    // Set the authorization header for the client
-    supabaseClient.auth.setSession({
-      access_token: authHeader?.replace('Bearer ', '') || '',
-      refresh_token: ''
-    })
+    console.log('Retrying job:', jobId, 'for user:', userId)
 
     // Use the RPC function to retry the job
     const { error: retryError } = await supabaseClient
-      .rpc('retry_job', { p_job_id: jobId })
+      .rpc('retry_job', { p_job_id: jobId, p_user_id: userId })
 
     if (retryError) {
       console.error('Retry job error:', retryError)
