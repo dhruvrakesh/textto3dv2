@@ -23,81 +23,19 @@ serve(async (req) => {
     const { jobId } = await req.json()
     console.log('Retrying job:', jobId)
 
-    // Get the authenticated user
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(
-      authHeader?.replace('Bearer ', '')
-    )
+    // Set the authorization header for the client
+    supabaseClient.auth.setSession({
+      access_token: authHeader?.replace('Bearer ', '') || '',
+      refresh_token: ''
+    })
 
-    if (authError || !user) {
-      throw new Error('Unauthorized')
-    }
+    // Use the RPC function to retry the job
+    const { error: retryError } = await supabaseClient
+      .rpc('retry_job', { p_job_id: jobId })
 
-    // Check if job exists and belongs to user
-    const { data: jobData, error: fetchError } = await supabaseClient
-      .from('t3d.jobs')
-      .select(`
-        *,
-        prompts:prompt_id (
-          id,
-          space_type,
-          style,
-          description,
-          json
-        )
-      `)
-      .eq('id', jobId)
-      .eq('user_id', user.id)
-      .single()
-
-    if (fetchError || !jobData) {
-      throw new Error('Job not found or unauthorized')
-    }
-
-    // Only allow retry of failed jobs
-    if (jobData.status !== 'failed') {
-      throw new Error('Can only retry failed jobs')
-    }
-
-    // Reset job to queued status
-    const { error: updateError } = await supabaseClient
-      .from('t3d.jobs')
-      .update({
-        status: 'queued',
-        progress: 0,
-        error_message: null,
-        result_url: null,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', jobId)
-      .eq('user_id', user.id)
-
-    if (updateError) {
-      throw new Error(updateError.message || 'Failed to retry job')
-    }
-
-    // Trigger re-processing by calling generate-3d-model
-    if (jobData.prompts) {
-      const generateResponse = await supabaseClient.functions.invoke('generate-3d-model', {
-        body: { 
-          jobId: jobId, 
-          enhancedPrompt: jobData.prompts.description 
-        }
-      });
-
-      if (generateResponse.error) {
-        console.error('Failed to restart 3D generation:', generateResponse.error);
-        // Update job status back to failed
-        await supabaseClient
-          .from('t3d.jobs')
-          .update({
-            status: 'failed',
-            error_message: 'Failed to restart 3D generation'
-          })
-          .eq('id', jobId)
-          .eq('user_id', user.id)
-        
-        throw new Error('Failed to restart 3D generation')
-      }
+    if (retryError) {
+      console.error('Retry job error:', retryError)
+      throw new Error(retryError.message || 'Failed to retry job')
     }
 
     console.log('Job retry initiated successfully:', jobId)

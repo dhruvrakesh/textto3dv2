@@ -23,38 +23,15 @@ serve(async (req) => {
     const { jobId } = await req.json()
     console.log('Deleting job:', jobId)
 
-    // Get the authenticated user
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(
-      authHeader?.replace('Bearer ', '')
-    )
+    // Set the authorization header for the client
+    supabaseClient.auth.setSession({
+      access_token: authHeader?.replace('Bearer ', '') || '',
+      refresh_token: ''
+    })
 
-    if (authError || !user) {
-      throw new Error('Unauthorized')
-    }
-
-    // Check if job exists and belongs to user
-    const { data: jobData, error: fetchError } = await supabaseClient
-      .from('t3d.jobs')
-      .select('*')
-      .eq('id', jobId)
-      .eq('user_id', user.id)
-      .single()
-
-    if (fetchError || !jobData) {
-      throw new Error('Job not found or unauthorized')
-    }
-
-    // Don't allow deletion of processing jobs
-    if (jobData.status === 'processing') {
-      throw new Error('Cannot delete job that is currently processing')
-    }
-
-    // Delete the job
+    // Use the RPC function to delete the job
     const { error: deleteError } = await supabaseClient
-      .from('t3d.jobs')
-      .delete()
-      .eq('id', jobId)
-      .eq('user_id', user.id)
+      .rpc('delete_job', { p_job_id: jobId })
 
     if (deleteError) {
       console.error('Delete job error:', deleteError)
