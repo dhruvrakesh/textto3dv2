@@ -55,7 +55,7 @@ export const useJobs = () => {
     retry: false, // Don't retry failed requests
   });
 
-  // Set up real-time subscription for job updates using direct channel
+  // Set up real-time subscription for job updates with enhanced progress tracking
   useEffect(() => {
     if (!user) return;
 
@@ -73,6 +73,27 @@ export const useJobs = () => {
         },
         (payload) => {
           console.log('Job update received:', payload);
+          // Immediately update the query cache with new data for real-time progress
+          queryClient.setQueryData(['jobs', user.id], (oldData: Job[] | undefined) => {
+            if (!oldData) return oldData;
+            
+            const updatedJob = payload.new as Job;
+            const existingJobIndex = oldData.findIndex(job => job.id === updatedJob.id);
+            
+            if (existingJobIndex >= 0) {
+              // Update existing job
+              const newData = [...oldData];
+              newData[existingJobIndex] = { ...newData[existingJobIndex], ...updatedJob };
+              return newData;
+            } else if (payload.eventType === 'INSERT') {
+              // Add new job
+              return [updatedJob, ...oldData];
+            }
+            
+            return oldData;
+          });
+          
+          // Also invalidate to ensure consistency
           queryClient.invalidateQueries({ queryKey: ['jobs', user.id] });
         }
       )

@@ -10,6 +10,37 @@ interface ModelViewerProps {
   job?: any;
 }
 
+// Helper functions for progress tracking
+const getProgressMessage = (progress: number, status?: string) => {
+  if (status === 'failed') return 'Generation Failed';
+  if (progress === 0) return 'Initializing...';
+  if (progress < 15) return 'Queuing Generation...';
+  if (progress < 30) return 'Enhancing Prompt...';
+  if (progress < 70) return 'Creating 3D Model...';
+  if (progress < 90) return 'Processing Result...';
+  if (progress < 100) return 'Finalizing...';
+  return 'Generation Complete!';
+};
+
+const getProgressDescription = (progress: number, status?: string) => {
+  if (status === 'failed') return 'Something went wrong during generation';
+  if (progress === 0) return 'Preparing your 3D generation request';
+  if (progress < 15) return 'Your request is being queued for processing';
+  if (progress < 30) return 'AI is analyzing and enhancing your description';
+  if (progress < 70) return 'Advanced AI models are creating your 3D space';
+  if (progress < 90) return 'Optimizing the generated model for viewing';
+  if (progress < 100) return 'Preparing final model for download';
+  return 'Your 3D model is ready to explore!';
+};
+
+const getEstimatedTime = (progress: number) => {
+  if (progress < 15) return '2-3 min';
+  if (progress < 30) return '1-2 min';
+  if (progress < 70) return '30-60 sec';
+  if (progress < 90) return '15-30 sec';
+  return 'Almost done';
+};
+
 const ModelViewer = ({ model, isGenerating, job }: ModelViewerProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<any>(null);
@@ -351,23 +382,56 @@ const ModelViewer = ({ model, isGenerating, job }: ModelViewerProps) => {
         >
           {isGenerating ? (
             <div className="flex items-center justify-center h-full">
-              <div className="text-center space-y-4">
-                <div className="w-16 h-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto" />
-                <div className="space-y-2">
-                  <p className="text-foreground font-medium">Generating your 3D model...</p>
-                  <p className="text-muted-foreground text-sm">AI is enhancing your prompt and creating the space</p>
+              <div className="text-center space-y-6">
+                <div className="relative">
+                  <div className="w-20 h-20 border-4 border-primary/20 border-t-primary rounded-full animate-spin mx-auto" />
+                  <div className="absolute inset-0 w-20 h-20 border-4 border-transparent border-r-primary/40 rounded-full animate-spin mx-auto" style={{ animationDuration: '2s', animationDirection: 'reverse' }} />
+                </div>
+                
+                <div className="space-y-3">
+                  <p className="text-foreground font-semibold text-lg">
+                    {getProgressMessage(job?.progress || 0, job?.status)}
+                  </p>
+                  <p className="text-muted-foreground text-sm">
+                    {getProgressDescription(job?.progress || 0, job?.status)}
+                  </p>
+                  
                   {job && job.progress > 0 && (
-                    <div className="w-48 mx-auto">
-                      <div className="flex justify-between text-xs mb-1">
-                        <span>Progress</span>
-                        <span>{job.progress}%</span>
+                    <div className="w-64 mx-auto space-y-3">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Progress</span>
+                        <div className="text-right">
+                          <span className="text-foreground font-medium">{job.progress}%</span>
+                          {job.progress > 0 && job.progress < 100 && (
+                            <span className="text-xs text-muted-foreground ml-2">
+                              ETA: {getEstimatedTime(job.progress)}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <div className="w-full bg-muted rounded-full h-2">
-                        <div 
-                          className="bg-primary h-2 rounded-full transition-all" 
-                          style={{ width: `${job.progress}%` }}
-                        />
+                      
+                      <div className="relative">
+                        <div className="w-full bg-muted/50 rounded-full h-3 overflow-hidden">
+                          <div 
+                            className="h-full rounded-full transition-all duration-1000 ease-out bg-gradient-to-r from-primary to-primary/80" 
+                            style={{ width: `${job.progress}%` }}
+                          />
+                        </div>
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent rounded-full animate-pulse" />
                       </div>
+                      
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span className={job.progress >= 5 ? 'text-primary' : ''}>Queued</span>
+                        <span className={job.progress >= 20 ? 'text-primary' : ''}>Processing</span>
+                        <span className={job.progress >= 50 ? 'text-primary' : ''}>Generating</span>
+                        <span className={job.progress >= 90 ? 'text-primary' : ''}>Finalizing</span>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {job?.error_message && (
+                    <div className="mt-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+                      <p className="text-destructive text-sm">{job.error_message}</p>
                     </div>
                   )}
                 </div>
