@@ -446,7 +446,7 @@ const ModelViewer = ({ model, isGenerating, job }: ModelViewerProps) => {
                     {getProgressDescription(job?.progress || 0, job?.status)}
                   </p>
                   
-                  {job && job.progress > 0 && (
+                  {job && job.progress > 0 && job.status !== 'failed' && (
                     <div className="w-64 mx-auto space-y-3">
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Progress</span>

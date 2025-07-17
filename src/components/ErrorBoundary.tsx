@@ -1,4 +1,3 @@
-
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,34 +6,64 @@ import { AlertTriangle, RefreshCw } from 'lucide-react';
 interface Props {
   children: ReactNode;
   fallback?: ReactNode;
+  onError?: (error: Error, errorInfo: ErrorInfo) => void;
 }
 
 interface State {
   hasError: boolean;
   error?: Error;
+  errorId: string;
 }
 
 class ErrorBoundary extends Component<Props, State> {
   public state: State = {
-    hasError: false
+    hasError: false,
+    errorId: ''
   };
 
   public static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error };
+    return { 
+      hasError: true, 
+      error,
+      errorId: Date.now().toString()
+    };
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('ErrorBoundary caught an error:', error, errorInfo);
+    
+    // Filter out common third-party errors
+    const isThirdPartyError = error.message.includes('facebook') || 
+                              error.message.includes('tiktok') ||
+                              error.message.includes('gtag') ||
+                              error.message.includes('Non-Error promise rejection');
+    
+    if (!isThirdPartyError) {
+      this.props.onError?.(error, errorInfo);
+    }
   }
 
   private handleReset = () => {
-    this.setState({ hasError: false, error: undefined });
+    this.setState({ 
+      hasError: false, 
+      error: undefined,
+      errorId: Date.now().toString()
+    });
   };
 
   public render() {
     if (this.state.hasError) {
       if (this.props.fallback) {
         return this.props.fallback;
+      }
+
+      const isThirdPartyError = this.state.error?.message.includes('facebook') || 
+                                this.state.error?.message.includes('tiktok') ||
+                                this.state.error?.message.includes('gtag');
+
+      // For third-party errors, just show children anyway
+      if (isThirdPartyError) {
+        return this.props.children;
       }
 
       return (
@@ -53,7 +82,7 @@ class ErrorBoundary extends Component<Props, State> {
                   <summary className="cursor-pointer hover:text-foreground">
                     Error details
                   </summary>
-                  <pre className="mt-2 p-2 bg-muted rounded text-left overflow-auto">
+                  <pre className="mt-2 p-2 bg-muted rounded text-left overflow-auto max-h-32">
                     {this.state.error.message}
                   </pre>
                 </details>

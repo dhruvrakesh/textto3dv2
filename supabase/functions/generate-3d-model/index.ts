@@ -317,7 +317,7 @@ serve(async (req) => {
     // If both APIs fail, provide a working demo model for testing
     console.log("Both APIs failed, providing working demo model for testing...");
     
-    const demoModelUrl = "https://threejs.org/examples/models/gltf/DamagedHelmet/glTF-Binary/DamagedHelmet.glb";
+    let demoModelUrl = "https://threejs.org/examples/models/gltf/DamagedHelmet/glTF-Binary/DamagedHelmet.glb";
     
     // Verify the demo model URL is accessible before saving
     try {
@@ -329,9 +329,8 @@ serve(async (req) => {
     } catch (urlError) {
       console.error("Demo model URL verification failed:", urlError);
       // Use a different reliable demo model
-      const fallbackDemoUrl = "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/DamagedHelmet/glTF-Binary/DamagedHelmet.glb";
-      console.log("Using fallback demo model URL:", fallbackDemoUrl);
-      demoModelUrl = fallbackDemoUrl;
+      demoModelUrl = "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/DamagedHelmet/glTF-Binary/DamagedHelmet.glb";
+      console.log("Using fallback demo model URL:", demoModelUrl);
     }
     
     console.log("Updating job status with demo model URL:", demoModelUrl);
