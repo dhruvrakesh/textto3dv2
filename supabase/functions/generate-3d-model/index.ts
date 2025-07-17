@@ -195,11 +195,14 @@ serve(async (req) => {
     console.log('Enhanced prompt:', enhancedPrompt.substring(0, 200) + '...');
 
     // Update job to running status
-    const { error: updateError } = await supabaseClient.rpc('update_job_status', {
-      p_job_id: jobId,
-      p_status: 'running',
-      p_progress: 5
-    });
+    const { error: updateError } = await supabaseClient
+      .from('user_jobs')
+      .update({
+        status: 'running',
+        progress: 5,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', jobId);
 
     if (updateError) {
       throw new Error(`Failed to update job status: ${updateError.message}`);
@@ -207,11 +210,14 @@ serve(async (req) => {
 
     // Step 1: Try Replicate API first (Primary)
     console.log("Attempting 3D generation with Replicate API...");
-    await supabaseClient.rpc('update_job_status', {
-      p_job_id: jobId,
-      p_status: 'running',
-      p_progress: 15
-    });
+    await supabaseClient
+      .from('user_jobs')
+      .update({
+        status: 'running',
+        progress: 15,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', jobId);
 
     const replicateResult = await generateWithReplicate(enhancedPrompt);
     
@@ -225,11 +231,14 @@ serve(async (req) => {
         attempts++;
         
         const progress = Math.min(20 + (attempts * 2), 80);
-        await supabaseClient.rpc('update_job_status', {
-          p_job_id: jobId,
-          p_status: 'running',
-          p_progress: progress
-        });
+        await supabaseClient
+          .from('user_jobs')
+          .update({
+            status: 'running',
+            progress: progress,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', jobId);
         
         const statusCheck = await checkReplicateStatus(replicateResult.predictionId);
         
@@ -242,13 +251,15 @@ serve(async (req) => {
           
           if (uploadResult.success) {
             // Complete the job
-            await supabaseClient.rpc('update_job_status', {
-              p_job_id: jobId,
-              p_status: 'done', // Use 'done' to match database schema
-              p_progress: 100,
-              p_result_url: uploadResult.url,
-              p_job_type: 'replicate'
-            });
+            await supabaseClient
+              .from('user_jobs')
+              .update({
+                status: 'completed',
+                progress: 100,
+                model_url: uploadResult.url,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', jobId);
 
             return new Response(
               JSON.stringify({ 
@@ -273,11 +284,14 @@ serve(async (req) => {
 
     // Step 2: Fallback to Hugging Face
     console.log("Attempting 3D generation with Hugging Face API...");
-    await supabaseClient.rpc('update_job_status', {
-      p_job_id: jobId,
-      p_status: 'running',
-      p_progress: 85
-    });
+    await supabaseClient
+      .from('user_jobs')
+      .update({
+        status: 'running',
+        progress: 85,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', jobId);
 
     const hfResult = await generateWithHuggingFace(enhancedPrompt);
     
@@ -290,13 +304,15 @@ serve(async (req) => {
       
       if (uploadResult.success) {
         // Complete the job
-        await supabaseClient.rpc('update_job_status', {
-          p_job_id: jobId,
-          p_status: 'done', // Use 'done' to match database schema
-          p_progress: 100,
-          p_result_url: uploadResult.url,
-          p_job_type: 'huggingface'
-        });
+        await supabaseClient
+          .from('user_jobs')
+          .update({
+            status: 'completed',
+            progress: 100,
+            model_url: uploadResult.url,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', jobId);
 
         return new Response(
           JSON.stringify({ 
@@ -334,13 +350,15 @@ serve(async (req) => {
     }
     
     console.log("Updating job status with demo model URL:", demoModelUrl);
-    const { error: demoUpdateError } = await supabaseClient.rpc('update_job_status', {
-      p_job_id: jobId,
-      p_status: 'done', // Use 'done' to match database schema
-      p_progress: 100,
-      p_result_url: demoModelUrl,
-      p_job_type: 'demo'
-    });
+    const { error: demoUpdateError } = await supabaseClient
+      .from('user_jobs')
+      .update({
+        status: 'completed',
+        progress: 100,
+        model_url: demoModelUrl,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', jobId);
 
     if (demoUpdateError) {
       console.error("Failed to update job with demo model:", demoUpdateError);
@@ -352,8 +370,8 @@ serve(async (req) => {
     
     // Verify the update worked by querying the job
     const { data: verifyData, error: verifyError } = await supabaseClient
-      .from('t3d.jobs')
-      .select('id, result_url, status')
+      .from('user_jobs')
+      .select('id, model_url, status')
       .eq('id', jobId)
       .single();
       
@@ -389,11 +407,14 @@ serve(async (req) => {
           Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
         );
         
-        await supabaseClient.rpc('update_job_status', {
-          p_job_id: jobId,
-          p_status: 'failed',
-          p_error_message: error.message
-        });
+        await supabaseClient
+          .from('user_jobs')
+          .update({
+            status: 'failed',
+            error_message: error.message,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', jobId);
       } catch (updateError) {
         console.error('Failed to update job status to failed:', updateError);
       }
