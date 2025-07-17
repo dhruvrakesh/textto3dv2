@@ -319,6 +319,21 @@ serve(async (req) => {
     
     const demoModelUrl = "https://threejs.org/examples/models/gltf/DamagedHelmet/glTF-Binary/DamagedHelmet.glb";
     
+    // Verify the demo model URL is accessible before saving
+    try {
+      const testResponse = await fetch(demoModelUrl, { method: 'HEAD' });
+      if (!testResponse.ok) {
+        throw new Error(`Demo model URL not accessible: ${testResponse.status}`);
+      }
+      console.log("Demo model URL verified as accessible");
+    } catch (urlError) {
+      console.error("Demo model URL verification failed:", urlError);
+      // Use a different reliable demo model
+      const fallbackUrl = "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/DamagedHelmet/glTF-Binary/DamagedHelmet.glb";
+      console.log("Using fallback demo model URL:", fallbackUrl);
+      const demoModelUrl = fallbackUrl;
+    }
+    
     console.log("Updating job status with demo model URL:", demoModelUrl);
     const { error: demoUpdateError } = await supabaseClient.rpc('update_job_status', {
       p_job_id: jobId,
@@ -330,10 +345,24 @@ serve(async (req) => {
 
     if (demoUpdateError) {
       console.error("Failed to update job with demo model:", demoUpdateError);
+      console.error("Update error details:", JSON.stringify(demoUpdateError, null, 2));
       throw new Error(`Failed to save demo model URL: ${demoUpdateError.message}`);
     }
     
     console.log("Successfully updated job with demo model URL");
+    
+    // Verify the update worked by querying the job
+    const { data: verifyData, error: verifyError } = await supabaseClient
+      .from('t3d.jobs')
+      .select('id, result_url, status')
+      .eq('id', jobId)
+      .single();
+      
+    if (verifyError) {
+      console.error("Failed to verify job update:", verifyError);
+    } else {
+      console.log("Job verification result:", verifyData);
+    }
 
     return new Response(
       JSON.stringify({ 
