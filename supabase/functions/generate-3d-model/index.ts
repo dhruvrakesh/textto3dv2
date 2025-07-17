@@ -329,9 +329,9 @@ serve(async (req) => {
     } catch (urlError) {
       console.error("Demo model URL verification failed:", urlError);
       // Use a different reliable demo model
-      const fallbackUrl = "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/DamagedHelmet/glTF-Binary/DamagedHelmet.glb";
-      console.log("Using fallback demo model URL:", fallbackUrl);
-      const demoModelUrl = fallbackUrl;
+      const fallbackDemoUrl = "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/DamagedHelmet/glTF-Binary/DamagedHelmet.glb";
+      console.log("Using fallback demo model URL:", fallbackDemoUrl);
+      demoModelUrl = fallbackDemoUrl;
     }
     
     console.log("Updating job status with demo model URL:", demoModelUrl);

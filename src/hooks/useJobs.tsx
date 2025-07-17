@@ -75,7 +75,7 @@ export const useJobs = () => {
     retry: false, // Don't retry failed requests
   });
 
-  // Set up polling for job updates to avoid subscription cycling issues
+  // Set up intelligent polling for job updates with exponential backoff
   useEffect(() => {
     if (!user?.id) return;
 
@@ -84,6 +84,7 @@ export const useJobs = () => {
     let pollInterval = 2000; // Start with 2 seconds
     const maxInterval = 10000; // Max 10 seconds
     let errorCount = 0;
+    let intervalId: NodeJS.Timeout | null = null;
     
     const poll = async () => {
       try {
@@ -94,12 +95,15 @@ export const useJobs = () => {
         );
         
         if (hasActiveJobs) {
-          console.log('Polling for job updates...');
+          console.log(`Polling for job updates (interval: ${pollInterval}ms)...`);
           queryClient.invalidateQueries({ queryKey: ['jobs', user.id] });
           
           // Reset error count and interval on successful poll
           errorCount = 0;
-          pollInterval = 2000;
+          pollInterval = Math.max(2000, pollInterval * 0.9); // Gradually decrease interval
+        } else {
+          // No active jobs, increase interval to save resources
+          pollInterval = Math.min(5000, pollInterval * 1.2);
         }
       } catch (error) {
         console.error('Error during job polling:', error);
@@ -111,15 +115,19 @@ export const useJobs = () => {
           console.log(`Increased poll interval to ${pollInterval}ms due to errors`);
         }
       }
+      
+      // Schedule next poll with current interval
+      intervalId = setTimeout(poll, pollInterval);
     };
     
     // Start polling immediately
     poll();
-    const intervalId = setInterval(poll, pollInterval);
 
     return () => {
       console.log('Cleaning up job polling');
-      clearInterval(intervalId);
+      if (intervalId) {
+        clearTimeout(intervalId);
+      }
     };
   }, [user?.id, queryClient]);
 

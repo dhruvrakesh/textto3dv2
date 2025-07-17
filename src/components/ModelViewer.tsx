@@ -237,23 +237,36 @@ const ModelViewer = ({ model, isGenerating, job }: ModelViewerProps) => {
           sceneRef.current.remove(modelRef.current);
         }
 
-        // Add retry logic for model loading
+        // Add robust retry logic for model loading with better error handling
         const loadModelWithRetry = async (url: string, retries = 3) => {
           for (let attempt = 1; attempt <= retries; attempt++) {
             try {
-              console.log(`Loading model attempt ${attempt}/${retries}`);
+              console.log(`Loading model attempt ${attempt}/${retries} from: ${url}`);
               
-              // First check if URL is accessible
-              const response = await fetch(url, { method: 'HEAD' });
-              if (!response.ok) {
-                throw new Error(`Model URL not accessible: ${response.status} ${response.statusText}`);
+              // Validate URL format
+              if (!url || (!url.startsWith('http') && !url.startsWith('data:'))) {
+                throw new Error(`Invalid model URL format: ${url}`);
+              }
+              
+              // For HTTP URLs, check accessibility first
+              if (url.startsWith('http')) {
+                const response = await fetch(url, { method: 'HEAD' });
+                if (!response.ok) {
+                  throw new Error(`Model URL not accessible: ${response.status} ${response.statusText}`);
+                }
+                console.log(`Model URL verified as accessible (${response.status})`);
               }
               
               await new Promise((resolve, reject) => {
+                const loadingTimeout = setTimeout(() => {
+                  reject(new Error('Model loading timeout (30s exceeded)'));
+                }, 30000);
+                
                 loader.load(
                   url,
                   async (gltf) => {
-                    console.log('Model loaded successfully');
+                    clearTimeout(loadingTimeout);
+                    console.log('Model loaded successfully:', gltf);
                     const loadedModel = gltf.scene;
                     
                     // Scale and position the model
@@ -282,10 +295,11 @@ const ModelViewer = ({ model, isGenerating, job }: ModelViewerProps) => {
                     resolve(gltf);
                   },
                   (progress) => {
-                    console.log('Loading progress:', progress);
+                    console.log('Loading progress:', Math.round((progress.loaded / progress.total) * 100) + '%');
                   },
                   (error) => {
-                    reject(error);
+                    clearTimeout(loadingTimeout);
+                    reject(new Error(`GLTFLoader error: ${error.message || error}`));
                   }
                 );
               });
@@ -297,11 +311,13 @@ const ModelViewer = ({ model, isGenerating, job }: ModelViewerProps) => {
               
               if (attempt === retries) {
                 // Final attempt failed - set error state
-                console.error('All model loading attempts failed');
+                console.error('All model loading attempts failed, showing error state');
                 throw error;
               } else {
                 // Wait before retry (exponential backoff)
-                await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+                const backoffDelay = 1000 * Math.pow(2, attempt - 1);
+                console.log(`Waiting ${backoffDelay}ms before retry...`);
+                await new Promise(resolve => setTimeout(resolve, backoffDelay));
               }
             }
           }
