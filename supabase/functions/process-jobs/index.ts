@@ -20,16 +20,16 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Process queued jobs
-    const { error: processError } = await supabase.rpc('process_queued_jobs', {}, { schema: 't3d' });
+    // Process queued jobs - call the function with schema prefix
+    const { error: processError } = await supabase.rpc('t3d.process_queued_jobs');
     
     if (processError) {
       console.error('Error processing jobs:', processError);
       throw processError;
     }
 
-    // Clean up stuck jobs
-    const { data: cleanupCount, error: cleanupError } = await supabase.rpc('cleanup_stuck_jobs', {}, { schema: 't3d' });
+    // Clean up stuck jobs - call the function with schema prefix
+    const { data: cleanupCount, error: cleanupError } = await supabase.rpc('t3d.cleanup_stuck_jobs');
     
     if (cleanupError) {
       console.error('Error cleaning up jobs:', cleanupError);
