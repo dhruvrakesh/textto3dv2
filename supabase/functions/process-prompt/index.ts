@@ -35,6 +35,7 @@ serve(async (req) => {
       const payload = JSON.parse(atob(token.split('.')[1]));
       userId = payload.sub;
     } catch (error) {
+      console.error('JWT decode error:', error);
       return createCorsErrorResponse('Invalid authorization token', 401);
     }
 
@@ -44,9 +45,9 @@ serve(async (req) => {
 
     console.log('Processing prompt for user:', userId);
 
-    // Start a transaction to create prompt and job
+    // Create prompt in prompts table
     const { data: prompt, error: promptError } = await supabaseClient
-      .from('t3d.prompts')
+      .from('prompts')
       .insert({
         user_id: userId,
         space_type: promptData.space_type || 'room',
@@ -59,14 +60,14 @@ serve(async (req) => {
 
     if (promptError) {
       console.error('Error creating prompt:', promptError);
-      throw new Error(`Failed to create prompt: ${promptError.message}`);
+      return createCorsErrorResponse(`Failed to create prompt: ${promptError.message}`, 500);
     }
 
     console.log('Created prompt:', prompt.id);
 
-    // Create job
+    // Create job in jobs table
     const { data: job, error: jobError } = await supabaseClient
-      .from('t3d.jobs')
+      .from('jobs')
       .insert({
         prompt_id: prompt.id,
         user_id: userId,
@@ -79,52 +80,73 @@ serve(async (req) => {
 
     if (jobError) {
       console.error('Error creating job:', jobError);
-      throw new Error(`Failed to create job: ${jobError.message}`);
+      return createCorsErrorResponse(`Failed to create job: ${jobError.message}`, 500);
     }
 
     console.log('Created job:', job.id);
 
     // Call the enhance-prompt function
-    const { data: enhanceData, error: enhanceError } = await supabaseClient.functions.invoke('enhance-prompt', {
-      body: { 
-        prompt: promptData.description,
-        spaceType: promptData.space_type,
-        style: promptData.style
-      }
-    });
+    let enhancedPrompt = promptData.description;
+    try {
+      const { data: enhanceData, error: enhanceError } = await supabaseClient.functions.invoke('enhance-prompt', {
+        body: { 
+          prompt: promptData.description,
+          spaceType: promptData.space_type,
+          style: promptData.style
+        }
+      });
 
-    if (enhanceError) {
-      console.error('Error enhancing prompt:', enhanceError);
-      // Continue with original prompt if enhancement fails
+      if (enhanceError) {
+        console.error('Error enhancing prompt:', enhanceError);
+        // Continue with original prompt if enhancement fails
+      } else if (enhanceData?.enhancedPrompt) {
+        enhancedPrompt = enhanceData.enhancedPrompt;
+        console.log('Enhanced prompt successfully');
+      }
+    } catch (error) {
+      console.error('Enhance prompt function failed:', error);
+      // Continue with original prompt
     }
 
-    const enhancedPrompt = enhanceData?.enhancedPrompt || promptData.description;
-    console.log('Enhanced prompt:', enhancedPrompt);
-
     // Call the generate-3d-model function
-    const { error: generateError } = await supabaseClient.functions.invoke('generate-3d-model', {
-      body: { 
-        jobId: job.id,
-        enhancedPrompt
-      }
-    });
+    try {
+      const { error: generateError } = await supabaseClient.functions.invoke('generate-3d-model', {
+        body: { 
+          jobId: job.id,
+          enhancedPrompt
+        }
+      });
 
-    if (generateError) {
-      console.error('Error starting 3D generation:', generateError);
+      if (generateError) {
+        console.error('Error starting 3D generation:', generateError);
+        
+        // Update job status to error
+        await supabaseClient
+          .from('jobs')
+          .update({
+            status: 'error',
+            error_message: generateError.message || 'Failed to start 3D generation'
+          })
+          .eq('id', job.id);
+
+        return createCorsErrorResponse(`Failed to start 3D generation: ${generateError.message}`, 500);
+      }
+
+      console.log('3D generation started for job:', job.id);
+    } catch (error) {
+      console.error('Generate 3D model function failed:', error);
       
       // Update job status to error
       await supabaseClient
-        .from('t3d.jobs')
+        .from('jobs')
         .update({
           status: 'error',
-          error_message: generateError.message || 'Failed to start 3D generation'
+          error_message: error.message || 'Failed to start 3D generation'
         })
         .eq('id', job.id);
 
-      throw new Error(`Failed to start 3D generation: ${generateError.message}`);
+      return createCorsErrorResponse(`Failed to start 3D generation: ${error.message}`, 500);
     }
-
-    console.log('3D generation started for job:', job.id);
 
     return createCorsResponse({
       success: true,
@@ -135,6 +157,6 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error in process-prompt function:', error);
-    return createCorsErrorResponse(error.message || 'Internal server error');
+    return createCorsErrorResponse(error.message || 'Internal server error', 500);
   }
 });

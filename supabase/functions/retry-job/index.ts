@@ -27,41 +27,120 @@ serve(async (req) => {
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-    )
+    );
 
     // Get the authorization header
-    const authHeader = req.headers.get('Authorization')
+    const authHeader = req.headers.get('Authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new Error('Authorization header missing or invalid');
+      return createCorsErrorResponse('Authorization header missing or invalid', 401);
     }
     
-    const token = authHeader.replace('Bearer ', '')
-    const { userId } = decodeJWT(token)
+    const token = authHeader.replace('Bearer ', '');
+    const { userId } = decodeJWT(token);
     
-    const { jobId } = await req.json()
-    console.log('Retrying job:', jobId, 'for user:', userId)
+    const { jobId } = await req.json();
+    console.log('Retrying job:', jobId, 'for user:', userId);
 
-    // Call the public wrapper function that securely calls the t3d schema function
-    const { error: retryError } = await supabaseClient
-      .rpc('retry_job', {
-        p_job_id: jobId,
-        p_user_id: userId
+    if (!jobId) {
+      return createCorsErrorResponse('Job ID is required', 400);
+    }
+
+    // First, verify the job exists and belongs to the user
+    const { data: existingJob, error: fetchError } = await supabaseClient
+      .from('jobs')
+      .select('id, status, prompt_id, user_id')
+      .eq('id', jobId)
+      .eq('user_id', userId)
+      .single();
+
+    if (fetchError || !existingJob) {
+      console.error('Job not found or access denied:', fetchError);
+      return createCorsErrorResponse('Job not found or access denied', 404);
+    }
+
+    // Only allow retry for failed jobs
+    if (existingJob.status !== 'error' && existingJob.status !== 'failed') {
+      return createCorsErrorResponse('Job can only be retried if it has failed', 400);
+    }
+
+    // Reset the job status
+    const { error: resetError } = await supabaseClient
+      .from('jobs')
+      .update({
+        status: 'queued',
+        progress: 0,
+        error_message: null,
+        result_url: null,
+        updated_at: new Date().toISOString()
       })
+      .eq('id', jobId);
 
-    if (retryError) {
-      console.error('Retry job error:', retryError)
-      throw new Error(retryError.message || 'Failed to retry job')
+    if (resetError) {
+      console.error('Failed to reset job:', resetError);
+      return createCorsErrorResponse(`Failed to reset job: ${resetError.message}`, 500);
     }
 
-    console.log('Job retry initiated successfully:', jobId)
+    // Get the associated prompt to restart generation
+    const { data: prompt, error: promptError } = await supabaseClient
+      .from('prompts')
+      .select('description, space_type, style')
+      .eq('id', existingJob.prompt_id)
+      .single();
 
-    return createCorsResponse({ 
-      success: true,
-      message: 'Job retry initiated successfully' 
-    });
+    if (promptError || !prompt) {
+      console.error('Failed to fetch prompt data:', promptError);
+      return createCorsErrorResponse('Failed to fetch prompt data for retry', 500);
+    }
+
+    // Start the 3D generation process again
+    try {
+      const { error: generateError } = await supabaseClient.functions.invoke('generate-3d-model', {
+        body: { 
+          jobId: jobId,
+          enhancedPrompt: prompt.description
+        }
+      });
+
+      if (generateError) {
+        console.error('Failed to restart generation:', generateError);
+        
+        // Update job back to error status
+        await supabaseClient
+          .from('jobs')
+          .update({
+            status: 'error',
+            error_message: `Retry failed: ${generateError.message}`
+          })
+          .eq('id', jobId);
+
+        return createCorsErrorResponse(`Failed to restart generation: ${generateError.message}`, 500);
+      }
+
+      console.log('Job retry initiated successfully:', jobId);
+
+      return createCorsResponse({ 
+        success: true,
+        message: 'Job retry initiated successfully',
+        jobId: jobId
+      });
+
+    } catch (error) {
+      console.error('Error calling generate-3d-model:', error);
+      
+      // Update job back to error status
+      await supabaseClient
+        .from('jobs')
+        .update({
+          status: 'error',
+          error_message: `Retry failed: ${error.message}`
+        })
+        .eq('id', jobId);
+
+      return createCorsErrorResponse(`Retry failed: ${error.message}`, 500);
+    }
 
   } catch (error) {
-    console.error('Error in retry-job function:', error)
-    return createCorsErrorResponse(error.message || 'Internal server error');
+    console.error('Error in retry-job function:', error);
+    return createCorsErrorResponse(error.message || 'Internal server error', 500);
   }
-})
+});

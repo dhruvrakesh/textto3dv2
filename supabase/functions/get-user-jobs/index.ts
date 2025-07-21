@@ -22,9 +22,9 @@ serve(async (req) => {
 
     console.log('Fetching jobs for user:', p_user_id);
 
-    // Query jobs from the t3d schema with prompts data
-    const { data: jobs, error } = await supabaseClient
-      .from('t3d.jobs')
+    // First, get jobs from t3d.jobs table
+    const { data: jobs, error: jobsError } = await supabaseClient
+      .from('jobs')
       .select(`
         id,
         prompt_id,
@@ -35,29 +35,65 @@ serve(async (req) => {
         job_type,
         error_message,
         created_at,
-        updated_at,
-        prompts:t3d.prompts(
+        updated_at
+      `)
+      .eq('user_id', p_user_id)
+      .order('created_at', { ascending: false });
+
+    if (jobsError) {
+      console.error('Database error fetching jobs:', jobsError);
+      return createCorsErrorResponse(`Failed to fetch jobs: ${jobsError.message}`, 500);
+    }
+
+    if (!jobs || jobs.length === 0) {
+      console.log(`No jobs found for user ${p_user_id}`);
+      return createCorsResponse([]);
+    }
+
+    // Get unique prompt IDs
+    const promptIds = [...new Set(jobs.map(job => job.prompt_id).filter(Boolean))];
+    
+    let prompts = [];
+    if (promptIds.length > 0) {
+      // Fetch corresponding prompts
+      const { data: promptsData, error: promptsError } = await supabaseClient
+        .from('prompts')
+        .select(`
           id,
           space_type,
           style,
           description,
           json
-        )
-      `)
-      .eq('user_id', p_user_id)
-      .order('created_at', { ascending: false });
+        `)
+        .in('id', promptIds);
 
-    if (error) {
-      console.error('Database error:', error);
-      throw new Error(`Failed to fetch jobs: ${error.message}`);
+      if (promptsError) {
+        console.error('Database error fetching prompts:', promptsError);
+        // Continue without prompts data rather than failing
+        prompts = [];
+      } else {
+        prompts = promptsData || [];
+      }
     }
 
-    console.log(`Found ${jobs?.length || 0} jobs for user ${p_user_id}`);
+    // Create a lookup map for prompts
+    const promptsMap = new Map();
+    prompts.forEach(prompt => {
+      promptsMap.set(prompt.id, prompt);
+    });
 
-    return createCorsResponse(jobs || []);
+    // Combine jobs with their corresponding prompts
+    const jobsWithPrompts = jobs.map(job => ({
+      ...job,
+      prompts: job.prompt_id ? promptsMap.get(job.prompt_id) || null : null
+    }));
+
+    console.log(`Found ${jobsWithPrompts.length} jobs for user ${p_user_id}`);
+
+    return createCorsResponse(jobsWithPrompts);
 
   } catch (error) {
     console.error('Error in get-user-jobs function:', error);
-    return createCorsErrorResponse(error.message || 'Internal server error');
+    return createCorsErrorResponse(error.message || 'Internal server error', 500);
   }
 });
