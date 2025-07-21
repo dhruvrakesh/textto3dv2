@@ -100,7 +100,7 @@ export const useJobs = () => {
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
     refetchInterval: (data) => {
       // Only poll if there are active jobs
-      const hasActiveJobs = data?.some(job => {
+      const hasActiveJobs = Array.isArray(data) && data.some(job => {
         const translatedStatus = translateStatus(job.status);
         return translatedStatus === 'queued' || translatedStatus === 'running';
       });
