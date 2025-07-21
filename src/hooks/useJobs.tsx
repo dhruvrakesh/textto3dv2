@@ -24,18 +24,26 @@ export interface Job {
   };
 }
 
-// Status translation function to map database statuses to UI statuses
+// Enhanced status translation function to handle all possible database statuses
 export const translateStatus = (dbStatus: string): 'queued' | 'running' | 'completed' | 'failed' => {
-  switch (dbStatus) {
+  switch (dbStatus?.toLowerCase()) {
     case 'done':
+    case 'completed':
       return 'completed';
     case 'error':
     case 'failed':
+    case 'canceled':
+    case 'cancelled':
       return 'failed';
     case 'queued':
+    case 'pending':
+      return 'queued';
     case 'running':
-      return dbStatus as 'queued' | 'running';
+    case 'processing':
+    case 'starting':
+      return 'running';
     default:
+      console.warn('Unknown job status:', dbStatus);
       return 'queued';
   }
 };
@@ -43,6 +51,7 @@ export const translateStatus = (dbStatus: string): 'queued' | 'running' | 'compl
 export const useJobs = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const [isRealTimeConnected, setIsRealTimeConnected] = useState(false);
 
   // Fetch jobs for the current user using Edge Function to access t3d schema
   const { data: jobs = [], isLoading, error } = useQuery({
@@ -61,10 +70,12 @@ export const useJobs = () => {
           return []; // Return empty array instead of throwing
         }
         
-        // Transform the data to ensure status translation
+        // Transform the data to ensure status translation and error handling
         const transformedJobs = (data || []).map((job: any) => ({
           ...job,
-          status: translateStatus(job.status)
+          status: translateStatus(job.status),
+          error_message: job.error_message || null,
+          progress: Math.max(0, Math.min(100, job.progress || 0))
         }));
         
         return transformedJobs as Job[];
@@ -75,13 +86,49 @@ export const useJobs = () => {
     },
     enabled: !!user,
     retry: false, // Don't retry failed requests
+    refetchInterval: 5000, // Fallback polling every 5 seconds
   });
 
-  // Set up intelligent polling for job updates with exponential backoff
+  // Set up real-time subscription for job updates
   useEffect(() => {
     if (!user?.id) return;
 
-    console.log('Setting up intelligent polling for job updates');
+    console.log('Setting up real-time subscription for job updates');
+    
+    const channel = supabase
+      .channel('job-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
+          schema: 't3d',
+          table: 'jobs',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          console.log('Real-time job update received:', payload);
+          
+          // Invalidate and refetch jobs when we receive updates
+          queryClient.invalidateQueries({ queryKey: ['jobs', user.id] });
+        }
+      )
+      .subscribe((status) => {
+        console.log('Real-time subscription status:', status);
+        setIsRealTimeConnected(status === 'SUBSCRIBED');
+      });
+
+    return () => {
+      console.log('Cleaning up real-time subscription');
+      supabase.removeChannel(channel);
+      setIsRealTimeConnected(false);
+    };
+  }, [user?.id, queryClient]);
+
+  // Intelligent polling with exponential backoff (as backup to real-time)
+  useEffect(() => {
+    if (!user?.id || isRealTimeConnected) return;
+
+    console.log('Setting up fallback polling for job updates (real-time not available)');
     
     let pollInterval = 2000; // Start with 2 seconds
     const maxInterval = 10000; // Max 10 seconds
@@ -90,7 +137,7 @@ export const useJobs = () => {
     
     const poll = async () => {
       try {
-        // Only poll if there are active jobs (failed/completed jobs don't need polling)
+        // Only poll if there are active jobs
         const currentJobs = queryClient.getQueryData(['jobs', user.id]) as Job[] || [];
         const hasActiveJobs = currentJobs.some(job => {
           const translatedStatus = translateStatus(job.status);
@@ -127,12 +174,12 @@ export const useJobs = () => {
     poll();
 
     return () => {
-      console.log('Cleaning up job polling');
+      console.log('Cleaning up fallback polling');
       if (intervalId) {
         clearTimeout(intervalId);
       }
     };
-  }, [user?.id, queryClient]);
+  }, [user?.id, queryClient, isRealTimeConnected]);
 
   const processPrompt = async (promptData: any) => {
     if (!user) throw new Error('User not authenticated');
@@ -232,6 +279,7 @@ export const useJobs = () => {
     processPrompt,
     deleteJob,
     retryJob,
-    bulkDeleteJobs
+    bulkDeleteJobs,
+    isRealTimeConnected
   };
 };

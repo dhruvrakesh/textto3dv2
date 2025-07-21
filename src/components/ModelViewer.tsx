@@ -1,18 +1,23 @@
-
 import { useRef, useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Download, RotateCcw, ZoomIn, ZoomOut, Fullscreen } from "lucide-react";
+import { Download, RotateCcw, ZoomIn, ZoomOut, Fullscreen, AlertCircle, RefreshCw } from "lucide-react";
+import { translateStatus } from "@/hooks/useJobs";
 
 interface ModelViewerProps {
   model?: string;
   isGenerating: boolean;
   job?: any;
+  onRetry?: () => void;
 }
 
 // Helper functions for progress tracking
-const getProgressMessage = (progress: number, status?: string) => {
-  if (status === 'failed') return 'Generation Failed';
+const getProgressMessage = (progress: number, status?: string, errorMessage?: string) => {
+  const translatedStatus = translateStatus(status || '');
+  
+  if (translatedStatus === 'failed') {
+    return errorMessage ? `Generation Failed: ${errorMessage}` : 'Generation Failed';
+  }
   if (progress === 0) return 'Initializing...';
   if (progress < 15) return 'Queuing Generation...';
   if (progress < 30) return 'Enhancing Prompt...';
@@ -22,8 +27,15 @@ const getProgressMessage = (progress: number, status?: string) => {
   return 'Generation Complete!';
 };
 
-const getProgressDescription = (progress: number, status?: string) => {
-  if (status === 'failed') return 'Something went wrong during generation';
+const getProgressDescription = (progress: number, status?: string, errorMessage?: string) => {
+  const translatedStatus = translateStatus(status || '');
+  
+  if (translatedStatus === 'failed') {
+    if (errorMessage?.includes('demo model')) {
+      return 'AI services are not available, showing demo model instead';
+    }
+    return errorMessage || 'Something went wrong during generation. You can try again.';
+  }
   if (progress === 0) return 'Preparing your 3D generation request';
   if (progress < 15) return 'Your request is being queued for processing';
   if (progress < 30) return 'AI is analyzing and enhancing your description';
@@ -41,7 +53,7 @@ const getEstimatedTime = (progress: number) => {
   return 'Almost done';
 };
 
-const ModelViewer = ({ model, isGenerating, job }: ModelViewerProps) => {
+const ModelViewer = ({ model, isGenerating, job, onRetry }: ModelViewerProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<any>(null);
   const rendererRef = useRef<any>(null);
@@ -50,6 +62,11 @@ const ModelViewer = ({ model, isGenerating, job }: ModelViewerProps) => {
   const modelRef = useRef<any>(null);
   const [isThreeLoaded, setIsThreeLoaded] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Translate job status for consistent handling
+  const translatedStatus = job?.status ? translateStatus(job.status) : undefined;
+  const hasError = translatedStatus === 'failed';
+  const isDemoModel = job?.error_message?.includes('demo model') || model?.includes('DamagedHelmet');
 
   // Load Three.js dynamically with GLTFLoader
   useEffect(() => {
@@ -422,6 +439,11 @@ const ModelViewer = ({ model, isGenerating, job }: ModelViewerProps) => {
                   <Download className="w-4 h-4" />
                 </Button>
               )}
+              {hasError && onRetry && (
+                <Button variant="outline" size="sm" onClick={onRetry}>
+                  <RefreshCw className="w-4 h-4" />
+                </Button>
+              )}
             </div>
           )}
         </div>
@@ -439,14 +461,26 @@ const ModelViewer = ({ model, isGenerating, job }: ModelViewerProps) => {
                 </div>
                 
                 <div className="space-y-3">
-                  <p className="text-foreground font-semibold text-lg">
-                    {getProgressMessage(job?.progress || 0, job?.status)}
-                  </p>
-                  <p className="text-muted-foreground text-sm">
-                    {getProgressDescription(job?.progress || 0, job?.status)}
+                  <div className="flex items-center justify-center gap-2">
+                    {hasError && <AlertCircle className="w-5 h-5 text-destructive" />}
+                    <p className={`font-semibold text-lg ${hasError ? 'text-destructive' : 'text-foreground'}`}>
+                      {getProgressMessage(job?.progress || 0, job?.status, job?.error_message)}
+                    </p>
+                  </div>
+                  
+                  <p className="text-muted-foreground text-sm max-w-md mx-auto">
+                    {getProgressDescription(job?.progress || 0, job?.status, job?.error_message)}
                   </p>
                   
-                  {job && job.progress > 0 && job.status !== 'failed' && (
+                  {isDemoModel && (
+                    <div className="mt-4 p-3 bg-muted/50 border border-border/50 rounded-lg">
+                      <p className="text-foreground text-sm">
+                        🎯 You're viewing a demo model. AI generation services are currently unavailable.
+                      </p>
+                    </div>
+                  )}
+                  
+                  {job && job.progress > 0 && !hasError && (
                     <div className="w-64 mx-auto space-y-3">
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Progress</span>
@@ -479,9 +513,12 @@ const ModelViewer = ({ model, isGenerating, job }: ModelViewerProps) => {
                     </div>
                   )}
                   
-                  {job?.error_message && (
-                    <div className="mt-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-                      <p className="text-destructive text-sm">{job.error_message}</p>
+                  {hasError && onRetry && (
+                    <div className="mt-4">
+                      <Button onClick={onRetry} variant="outline" size="sm">
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                        Try Again
+                      </Button>
                     </div>
                   )}
                 </div>
@@ -507,6 +544,11 @@ const ModelViewer = ({ model, isGenerating, job }: ModelViewerProps) => {
               "Preview mode • Use the wizard to generate your 3D space"
             }
           </p>
+          {isDemoModel && model && (
+            <p className="text-xs text-primary mt-1">
+              Demo model shown - AI services will be available soon
+            </p>
+          )}
         </div>
       </div>
     </Card>
