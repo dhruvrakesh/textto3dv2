@@ -22,24 +22,9 @@ serve(async (req) => {
 
     console.log('Fetching jobs for user:', p_user_id);
 
-    // First, get jobs from t3d.jobs table
+    // First, get jobs from t3d.jobs table using rpc call
     const { data: jobs, error: jobsError } = await supabaseClient
-      .schema('t3d')
-      .from('jobs')
-      .select(`
-        id,
-        prompt_id,
-        user_id,
-        status,
-        progress,
-        result_url,
-        job_type,
-        error_message,
-        created_at,
-        updated_at
-      `)
-      .eq('user_id', p_user_id)
-      .order('created_at', { ascending: false });
+      .rpc('get_t3d_jobs', { p_user_id: p_user_id });
 
     if (jobsError) {
       console.error('Database error fetching jobs:', jobsError);
