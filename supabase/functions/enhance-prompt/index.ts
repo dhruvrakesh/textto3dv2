@@ -21,7 +21,24 @@ serve(async (req) => {
     
     console.log('OpenAI API key found, processing request...');
 
-    const { promptData } = await req.json();
+    const { prompt, spaceType, style, promptData } = await req.json();
+
+    // Handle both old and new data structure for backward compatibility
+    let processedData;
+    if (promptData) {
+      // New structure from process-prompt
+      processedData = promptData;
+    } else {
+      // Legacy structure - create a compatible object
+      processedData = {
+        space: spaceType || 'room',
+        style: style || 'modern',
+        description: prompt || '',
+        dimensions_mm: { x: 4000, y: 3000, z: 3000 },
+        color_scheme: ['neutral'],
+        mood_keywords: ['modern']
+      };
+    }
 
     // Create a detailed prompt for 3D generation based on the wizard data
     const systemPrompt = `You are an expert 3D interior design prompt engineer. Transform the user's basic requirements into a detailed, professional 3D generation prompt that will create stunning interior spaces.
@@ -38,12 +55,12 @@ Make it vivid, specific, and optimized for 3D rendering engines.`;
 
     const userPrompt = `Transform this interior design specification into a detailed 3D generation prompt:
 
-Space Type: ${promptData.space}
-Style: ${promptData.style}
-Dimensions: ${promptData.dimensions_mm.x}mm x ${promptData.dimensions_mm.y}mm x ${promptData.dimensions_mm.z}mm
-Color Scheme: ${promptData.color_scheme.join(', ')}
-Mood Keywords: ${promptData.mood_keywords.join(', ')}
-Description: ${promptData.description}
+Space Type: ${processedData.space || processedData.space_type || 'room'}
+Style: ${processedData.style || 'modern'}
+Dimensions: ${processedData.dimensions_mm?.x || 4000}mm x ${processedData.dimensions_mm?.y || 3000}mm x ${processedData.dimensions_mm?.z || 3000}mm
+Color Scheme: ${processedData.color_scheme?.join(', ') || 'neutral'}
+Mood Keywords: ${processedData.mood_keywords?.join(', ') || 'modern'}
+Description: ${processedData.description || prompt || ''}
 
 Create a comprehensive prompt that will generate a photorealistic 3D interior space.`;
 

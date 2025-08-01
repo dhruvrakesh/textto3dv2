@@ -111,9 +111,15 @@ serve(async (req) => {
     try {
       const { data: enhanceData, error: enhanceError } = await supabaseClient.functions.invoke('enhance-prompt', {
         body: { 
-          prompt: promptData.description,
-          spaceType: promptData.space_type,
-          style: promptData.style
+          promptData: {
+            space_type: promptData.space_type || promptData.space || 'room',
+            style: promptData.style || 'modern',
+            description: promptData.description || '',
+            dimensions_mm: promptData.dimensions_mm || { x: 4000, y: 3000, z: 3000 },
+            color_scheme: promptData.color_scheme || ['neutral'],
+            mood_keywords: promptData.mood_keywords || ['modern'],
+            ...promptData
+          }
         }
       });
 

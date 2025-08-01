@@ -1,7 +1,6 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import Replicate from "https://esm.sh/replicate@0.25.2"
+import { HfInference } from 'https://esm.sh/@huggingface/inference@2.3.2'
 import { corsHeaders, handleCorsOptions, createCorsResponse, createCorsErrorResponse } from '../_shared/cors.ts'
 
 serve(async (req) => {
@@ -16,13 +15,13 @@ serve(async (req) => {
     );
 
     const { jobId, enhancedPrompt } = await req.json();
-    console.log('Generating 3D model for job:', jobId);
+    console.log('Starting hybrid 3D generation for job:', jobId);
 
     if (!jobId) {
       return createCorsErrorResponse('Job ID is required', 400);
     }
 
-    // Update job status to running using RPC function
+    // Update job status to running
     const { error: updateError } = await supabaseClient
       .rpc('update_t3d_job', {
         p_job_id: jobId,
@@ -35,114 +34,204 @@ serve(async (req) => {
       return createCorsErrorResponse(`Failed to update job status: ${updateError.message}`, 500);
     }
 
-    // Initialize Replicate client
-    const replicate = new Replicate({
-      auth: Deno.env.get('REPLICATE_API_TOKEN'),
-    });
-
+    // Phase 1: Try Hugging Face first
+    console.log('Attempting 3D generation with Hugging Face...');
+    
     try {
-      console.log('Starting real 3D model generation with prompt:', enhancedPrompt);
+      const hfToken = Deno.env.get('HUGGING_FACE_ACCESS_TOKEN');
+      if (!hfToken) {
+        throw new Error('Hugging Face token not configured');
+      }
 
-      // Start the 3D generation prediction
-      const prediction = await replicate.predictions.create({
-        model: "tencent/hunyuan3d-2",
-        input: {
-          prompt: enhancedPrompt || "A detailed 3D model",
-          seed: Math.floor(Math.random() * 1000000),
-          steps: 50,
-          guidance_scale: 7.5
-        },
-        webhook: `${Deno.env.get('SUPABASE_URL')}/functions/v1/replicate-webhook`,
-        webhook_events_filter: ["start", "output", "logs", "completed"]
+      const hf = new HfInference(hfToken);
+      
+      // Update progress
+      await supabaseClient.rpc('update_t3d_job', {
+        p_job_id: jobId,
+        p_progress: 30
       });
 
-      console.log('Replicate prediction created:', prediction.id);
+      // Try Hunyuan3D-2.1 model for 3D generation
+      console.log('Using Hugging Face Hunyuan3D model with prompt:', enhancedPrompt?.substring(0, 100) + '...');
+      
+      const result = await hf.request({
+        model: "tencent/Hunyuan3D-2.1",
+        inputs: enhancedPrompt || "A detailed 3D model",
+        parameters: {
+          steps: 50,
+          guidance_scale: 7.5,
+          seed: Math.floor(Math.random() * 1000000)
+        }
+      });
 
-      // Update job with prediction ID and progress using RPC function
-      await supabaseClient
+      // Update progress
+      await supabaseClient.rpc('update_t3d_job', {
+        p_job_id: jobId,
+        p_progress: 80
+      });
+
+      // Process the result (assuming it returns a URL or blob data)
+      let resultUrl;
+      if (result && typeof result === 'object' && result.url) {
+        resultUrl = result.url;
+      } else if (result && result instanceof Blob) {
+        // Handle blob data if needed
+        resultUrl = URL.createObjectURL(result);
+      } else {
+        throw new Error('Unexpected result format from Hugging Face');
+      }
+
+      // Complete the job
+      const { error: completeError } = await supabaseClient
         .rpc('update_t3d_job', {
           p_job_id: jobId,
-          p_progress: 25,
-          p_replicate_prediction_id: prediction.id
+          p_status: 'done',
+          p_progress: 100,
+          p_result_url: resultUrl,
+          p_error_message: null
         });
 
-      // Poll for completion (with timeout)
-      let completed = false;
-      let attempts = 0;
-      const maxAttempts = 60; // 5 minutes max
+      if (completeError) {
+        console.error('Error completing job:', completeError);
+        return createCorsErrorResponse(`Failed to complete job: ${completeError.message}`, 500);
+      }
+
+      console.log('3D model generation completed successfully with Hugging Face:', jobId);
+
+      return createCorsResponse({
+        success: true,
+        jobId,
+        message: '3D model generated successfully using Hugging Face',
+        service: 'huggingface',
+        resultUrl
+      });
+
+    } catch (hfError) {
+      console.log('Hugging Face failed, trying Meshy fallback:', hfError.message);
       
-      while (!completed && attempts < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds
-        attempts++;
-
-        const status = await replicate.predictions.get(prediction.id);
-        console.log(`Prediction ${prediction.id} status:`, status.status);
-
-        // Update progress based on status
-        let progress = 25;
-        if (status.status === 'processing') {
-          progress = 25 + (attempts * 2); // Gradually increase progress
-        } else if (status.status === 'succeeded') {
-          progress = 100;
-          completed = true;
-        } else if (status.status === 'failed' || status.status === 'canceled') {
-          throw new Error(`3D generation ${status.status}: ${status.error || 'Unknown error'}`);
+      // Phase 2: Fallback to Meshy
+      try {
+        const meshyApiKey = Deno.env.get('MESHY_API_KEY');
+        if (!meshyApiKey) {
+          throw new Error('Meshy API key not configured');
         }
 
-        // Update job progress using RPC function
-        await supabaseClient
-          .rpc('update_t3d_job', {
+        console.log('Starting Meshy 3D generation...');
+        
+        // Update progress
+        await supabaseClient.rpc('update_t3d_job', {
+          p_job_id: jobId,
+          p_progress: 40
+        });
+
+        // Step 1: Create Meshy text-to-3D task (Preview)
+        const meshyCreateResponse = await fetch('https://api.meshy.ai/v2/text-to-3d', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${meshyApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            mode: 'preview',
+            prompt: enhancedPrompt || 'A detailed 3D model',
+            art_style: 'realistic',
+            negative_prompt: 'low quality, blurry, distorted'
+          }),
+        });
+
+        if (!meshyCreateResponse.ok) {
+          const errorText = await meshyCreateResponse.text();
+          throw new Error(`Meshy API error: ${meshyCreateResponse.status} - ${errorText}`);
+        }
+
+        const meshyTask = await meshyCreateResponse.json();
+        console.log('Meshy task created:', meshyTask.result);
+
+        // Update progress
+        await supabaseClient.rpc('update_t3d_job', {
+          p_job_id: jobId,
+          p_progress: 60
+        });
+
+        // Step 2: Poll for completion
+        let completed = false;
+        let attempts = 0;
+        const maxAttempts = 60; // 5 minutes max
+        
+        while (!completed && attempts < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds
+          attempts++;
+
+          const statusResponse = await fetch(`https://api.meshy.ai/v2/text-to-3d/${meshyTask.result}`, {
+            headers: {
+              'Authorization': `Bearer ${meshyApiKey}`,
+            },
+          });
+
+          if (!statusResponse.ok) {
+            throw new Error(`Meshy status check failed: ${statusResponse.status}`);
+          }
+
+          const status = await statusResponse.json();
+          console.log(`Meshy task ${meshyTask.result} status:`, status.status);
+
+          // Update progress
+          let progress = 60 + (attempts * 1);
+          await supabaseClient.rpc('update_t3d_job', {
             p_job_id: jobId,
             p_progress: Math.min(progress, 95)
           });
 
-        if (completed && status.output) {
-          // Extract the GLB file URL from the output
-          const resultUrl = Array.isArray(status.output) ? status.output[0] : status.output;
-          
-          // Complete the job using RPC function
-          const { error: completeError } = await supabaseClient
-            .rpc('update_t3d_job', {
-              p_job_id: jobId,
-              p_status: 'done',
-              p_progress: 100,
-              p_result_url: resultUrl,
-              p_error_message: null
+          if (status.status === 'SUCCEEDED') {
+            completed = true;
+            
+            // Complete the job
+            const { error: completeError } = await supabaseClient
+              .rpc('update_t3d_job', {
+                p_job_id: jobId,
+                p_status: 'done',
+                p_progress: 100,
+                p_result_url: status.model_urls?.glb || status.model_urls?.obj || status.thumbnail_url,
+                p_error_message: null
+              });
+
+            if (completeError) {
+              console.error('Error completing job:', completeError);
+              return createCorsErrorResponse(`Failed to complete job: ${completeError.message}`, 500);
+            }
+
+            console.log('3D model generation completed successfully with Meshy:', jobId);
+
+            return createCorsResponse({
+              success: true,
+              jobId,
+              message: '3D model generated successfully using Meshy (fallback)',
+              service: 'meshy',
+              resultUrl: status.model_urls?.glb || status.model_urls?.obj || status.thumbnail_url
             });
 
-          if (completeError) {
-            console.error('Error completing job:', completeError);
-            return createCorsErrorResponse(`Failed to complete job: ${completeError.message}`, 500);
+          } else if (status.status === 'FAILED') {
+            throw new Error(`Meshy generation failed: ${status.error || 'Unknown error'}`);
           }
-
-          console.log('3D model generation completed successfully:', jobId);
-
-          return createCorsResponse({
-            success: true,
-            jobId,
-            message: '3D model generated successfully',
-            predictionId: prediction.id,
-            resultUrl
-          });
         }
+
+        // If we reach here, it timed out
+        throw new Error('Meshy generation timed out after 5 minutes');
+
+      } catch (meshyError) {
+        console.error('Both Hugging Face and Meshy failed:', meshyError);
+
+        // Update job with error status
+        await supabaseClient
+          .rpc('update_t3d_job', {
+            p_job_id: jobId,
+            p_status: 'error',
+            p_progress: 0,
+            p_error_message: `Both services failed. HF: ${hfError.message}, Meshy: ${meshyError.message}`
+          });
+
+        return createCorsErrorResponse(`All 3D generation services failed. HF: ${hfError.message}, Meshy: ${meshyError.message}`, 500);
       }
-
-      // If we reach here, it timed out
-      throw new Error('3D generation timed out after 5 minutes');
-
-    } catch (generationError) {
-      console.error('3D generation failed:', generationError);
-
-      // Update job with error status using RPC function
-      await supabaseClient
-        .rpc('update_t3d_job', {
-          p_job_id: jobId,
-          p_status: 'error',
-          p_progress: 0,
-          p_error_message: generationError.message || '3D model generation failed'
-        });
-
-      return createCorsErrorResponse(`3D generation failed: ${generationError.message}`, 500);
     }
 
   } catch (error) {
