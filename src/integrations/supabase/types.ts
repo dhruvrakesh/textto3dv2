@@ -4663,6 +4663,33 @@ export type Database = {
         }
         Relationships: []
       }
+      gms_user_resource_access: {
+        Row: {
+          accessed_at: string | null
+          created_at: string | null
+          id: string
+          resource_name: string
+          resource_type: string
+          user_id: string
+        }
+        Insert: {
+          accessed_at?: string | null
+          created_at?: string | null
+          id?: string
+          resource_name: string
+          resource_type: string
+          user_id: string
+        }
+        Update: {
+          accessed_at?: string | null
+          created_at?: string | null
+          id?: string
+          resource_name?: string
+          resource_type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       gravure_printing: {
         Row: {
           actual_quantity: number | null
