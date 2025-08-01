@@ -12734,6 +12734,38 @@ export type Database = {
           job_id: string
         }[]
       }
+      create_t3d_job: {
+        Args: {
+          p_prompt_id: string
+          p_user_id: string
+          p_status: string
+          p_progress: number
+          p_job_type: string
+        }
+        Returns: {
+          id: string
+          prompt_id: string
+          user_id: string
+          status: string
+          progress: number
+          result_url: string
+          job_type: string
+          error_message: string
+          created_at: string
+          updated_at: string
+        }[]
+      }
+      create_t3d_prompt: {
+        Args: { p_user_id: string; p_version: number; p_json: Json }
+        Returns: {
+          id: string
+          user_id: string
+          version: number
+          prompt_json: Json
+          created_at: string
+          updated_at: string
+        }[]
+      }
       delete_deck_viscosity_reading: {
         Args: { p_reading_id: string }
         Returns: boolean
@@ -12814,6 +12846,14 @@ export type Database = {
           age_years: number
           base_salary: number
           active: boolean
+        }[]
+      }
+      find_t3d_job_by_prediction: {
+        Args: { p_prediction_id: string }
+        Returns: {
+          id: string
+          status: string
+          user_id: string
         }[]
       }
       generate_asset_code: {
@@ -13073,6 +13113,21 @@ export type Database = {
           notes: string
         }[]
       }
+      get_t3d_job_by_id: {
+        Args: { p_job_id: string }
+        Returns: {
+          id: string
+          prompt_id: string
+          user_id: string
+          status: string
+          progress: number
+          result_url: string
+          job_type: string
+          error_message: string
+          created_at: string
+          updated_at: string
+        }[]
+      }
       get_t3d_jobs: {
         Args: { p_user_id: string }
         Returns: {
@@ -13084,6 +13139,17 @@ export type Database = {
           result_url: string
           job_type: string
           error_message: string
+          created_at: string
+          updated_at: string
+        }[]
+      }
+      get_t3d_prompt_by_id: {
+        Args: { p_prompt_id: string }
+        Returns: {
+          id: string
+          user_id: string
+          version: number
+          prompt_json: Json
           created_at: string
           updated_at: string
         }[]
@@ -13650,6 +13716,17 @@ export type Database = {
       update_leave_balance: {
         Args: { emp_id: string; days_used: number }
         Returns: undefined
+      }
+      update_t3d_job: {
+        Args: {
+          p_job_id: string
+          p_status?: string
+          p_progress?: number
+          p_result_url?: string
+          p_error_message?: string
+          p_replicate_prediction_id?: string
+        }
+        Returns: boolean
       }
       update_user_approval: {
         Args: { user_id: string; approved: boolean; admin_notes?: string }
