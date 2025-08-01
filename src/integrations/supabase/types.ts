@@ -4690,6 +4690,81 @@ export type Database = {
         }
         Relationships: []
       }
+      gms_workshop_registrations: {
+        Row: {
+          accessibility_requirements: string | null
+          created_at: string
+          dietary_requirements: string | null
+          email: string
+          emergency_contact_name: string | null
+          emergency_contact_phone: string | null
+          experience_level: string | null
+          full_name: string
+          how_did_you_hear: string | null
+          id: string
+          payment_status: string
+          phone: string
+          registration_date: string
+          special_requests: string | null
+          status: string
+          updated_at: string
+          user_id: string | null
+          workshop_date: string | null
+          workshop_id: string
+          workshop_price: number | null
+          workshop_title: string
+          workshop_type: string
+        }
+        Insert: {
+          accessibility_requirements?: string | null
+          created_at?: string
+          dietary_requirements?: string | null
+          email: string
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          experience_level?: string | null
+          full_name: string
+          how_did_you_hear?: string | null
+          id?: string
+          payment_status?: string
+          phone: string
+          registration_date?: string
+          special_requests?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+          workshop_date?: string | null
+          workshop_id: string
+          workshop_price?: number | null
+          workshop_title: string
+          workshop_type: string
+        }
+        Update: {
+          accessibility_requirements?: string | null
+          created_at?: string
+          dietary_requirements?: string | null
+          email?: string
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          experience_level?: string | null
+          full_name?: string
+          how_did_you_hear?: string | null
+          id?: string
+          payment_status?: string
+          phone?: string
+          registration_date?: string
+          special_requests?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+          workshop_date?: string | null
+          workshop_id?: string
+          workshop_price?: number | null
+          workshop_title?: string
+          workshop_type?: string
+        }
+        Relationships: []
+      }
       gravure_printing: {
         Row: {
           actual_quantity: number | null
@@ -12996,6 +13071,32 @@ export type Database = {
           total_adjustments: number
           unit_name: string
           notes: string
+        }[]
+      }
+      get_t3d_jobs: {
+        Args: { p_user_id: string }
+        Returns: {
+          id: string
+          prompt_id: string
+          user_id: string
+          status: string
+          progress: number
+          result_url: string
+          job_type: string
+          error_message: string
+          created_at: string
+          updated_at: string
+        }[]
+      }
+      get_t3d_prompts: {
+        Args: { prompt_ids: string[] }
+        Returns: {
+          id: string
+          user_id: string
+          version: number
+          prompt_json: Json
+          created_at: string
+          updated_at: string
         }[]
       }
       get_user_jobs_safe: {

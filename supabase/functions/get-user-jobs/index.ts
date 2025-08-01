@@ -43,17 +43,7 @@ serve(async (req) => {
     if (promptIds.length > 0) {
       // Fetch corresponding prompts
       const { data: promptsData, error: promptsError } = await supabaseClient
-        .schema('t3d')
-        .from('prompts')
-        .select(`
-          id,
-          user_id,
-          version,
-          json,
-          created_at,
-          updated_at
-        `)
-        .in('id', promptIds);
+        .rpc('get_t3d_prompts', { prompt_ids: promptIds });
 
       if (promptsError) {
         console.error('Database error fetching prompts:', promptsError);
