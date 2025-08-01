@@ -14,36 +14,42 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     );
 
+    // Get the authenticated user from the request
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return createCorsErrorResponse('Missing authorization header', 401);
+    }
+
+    // Create a client for getting user info from the JWT
+    const userClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      {
+        global: {
+          headers: {
+            Authorization: authHeader,
+          },
+        },
+      }
+    );
+
+    // Get the user from the JWT
+    const { data: { user }, error: userError } = await userClient.auth.getUser();
+    
+    if (userError || !user) {
+      console.error('Authentication error:', userError);
+      return createCorsErrorResponse('Invalid authentication', 401);
+    }
+
+    const userId = user.id;
+    console.log('Processing prompt for user:', userId);
+
     const { promptData } = await req.json();
     console.log('Processing prompt data:', promptData);
 
     if (!promptData || typeof promptData !== 'object') {
       return createCorsErrorResponse('Invalid prompt data provided', 400);
     }
-
-    // Get user from auth header
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return createCorsErrorResponse('Missing or invalid authorization header', 401);
-    }
-
-    const token = authHeader.replace('Bearer ', '');
-    
-    // Decode JWT to get user ID
-    let userId;
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      userId = payload.sub;
-    } catch (error) {
-      console.error('JWT decode error:', error);
-      return createCorsErrorResponse('Invalid authorization token', 401);
-    }
-
-    if (!userId) {
-      return createCorsErrorResponse('User ID not found in token', 401);
-    }
-
-    console.log('Processing prompt for user:', userId);
 
     // Create prompt in prompts table
     const { data: prompt, error: promptError } = await supabaseClient
