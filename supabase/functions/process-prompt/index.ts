@@ -4,23 +4,34 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders, handleCorsOptions, createCorsResponse, createCorsErrorResponse } from '../_shared/cors.ts'
 
 serve(async (req) => {
+  console.log('=== PROCESS-PROMPT FUNCTION STARTED ===');
+  console.log('Request method:', req.method);
+  console.log('Request URL:', req.url);
+  
   if (req.method === 'OPTIONS') {
+    console.log('Handling CORS preflight');
     return handleCorsOptions();
   }
 
   try {
+    console.log('Creating Supabase clients...');
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     );
+    console.log('Service role client created successfully');
 
     // Get the authenticated user from the request
+    console.log('Checking authorization header...');
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
+      console.log('No authorization header found');
       return createCorsErrorResponse('Missing authorization header', 401);
     }
+    console.log('Authorization header found');
 
     // Create a client for getting user info from the JWT
+    console.log('Creating user client...');
     const userClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
@@ -32,8 +43,10 @@ serve(async (req) => {
         },
       }
     );
+    console.log('User client created');
 
     // Get the user from the JWT
+    console.log('Getting user from JWT...');
     const { data: { user }, error: userError } = await userClient.auth.getUser();
     
     if (userError || !user) {
@@ -42,14 +55,17 @@ serve(async (req) => {
     }
 
     const userId = user.id;
-    console.log('Processing prompt for user:', userId);
+    console.log('Successfully authenticated user:', userId);
 
+    console.log('Reading request body...');
     const { promptData } = await req.json();
     console.log('Processing prompt data:', promptData);
 
     if (!promptData || typeof promptData !== 'object') {
+      console.log('Invalid prompt data received');
       return createCorsErrorResponse('Invalid prompt data provided', 400);
     }
+    console.log('Prompt data validation passed');
 
     // Create prompt in prompts table
     const { data: prompt, error: promptError } = await supabaseClient
@@ -169,7 +185,10 @@ serve(async (req) => {
     });
 
   } catch (error) {
-    console.error('Error in process-prompt function:', error);
+    console.error('=== PROCESS-PROMPT ERROR ===');
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    console.error('Error details:', error);
     return createCorsErrorResponse(error.message || 'Internal server error', 500);
   }
 });
