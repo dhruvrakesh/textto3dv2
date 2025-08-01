@@ -1,6 +1,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import Replicate from "https://esm.sh/replicate@0.25.2"
 import { corsHeaders, handleCorsOptions, createCorsResponse, createCorsErrorResponse } from '../_shared/cors.ts'
 
 serve(async (req) => {
@@ -37,54 +38,109 @@ serve(async (req) => {
       return createCorsErrorResponse(`Failed to update job status: ${updateError.message}`, 500);
     }
 
-    // For now, simulate the 3D model generation with a demo model
-    // In a real implementation, this would call an actual 3D generation service
-    try {
-      // Simulate processing time
-      await new Promise(resolve => setTimeout(resolve, 2000));
+    // Initialize Replicate client
+    const replicate = new Replicate({
+      auth: Deno.env.get('REPLICATE_API_TOKEN'),
+    });
 
-      // Update progress
+    try {
+      console.log('Starting real 3D model generation with prompt:', enhancedPrompt);
+
+      // Start the 3D generation prediction
+      const prediction = await replicate.predictions.create({
+        model: "tencent/hunyuan3d-2",
+        input: {
+          prompt: enhancedPrompt || "A detailed 3D model",
+          seed: Math.floor(Math.random() * 1000000),
+          steps: 50,
+          guidance_scale: 7.5
+        },
+        webhook: `${Deno.env.get('SUPABASE_URL')}/functions/v1/replicate-webhook`,
+        webhook_events_filter: ["start", "output", "logs", "completed"]
+      });
+
+      console.log('Replicate prediction created:', prediction.id);
+
+      // Update job with prediction ID and progress
       await supabaseClient
         .schema('t3d')
         .from('jobs')
         .update({
-          progress: 50,
+          progress: 25,
+          replicate_prediction_id: prediction.id,
           updated_at: new Date().toISOString()
         })
         .eq('id', jobId);
 
-      // Simulate more processing
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      // Poll for completion (with timeout)
+      let completed = false;
+      let attempts = 0;
+      const maxAttempts = 60; // 5 minutes max
+      
+      while (!completed && attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds
+        attempts++;
 
-      // For demo purposes, use a demo 3D model URL
-      const demoModelUrl = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/DamagedHelmet/glTF/DamagedHelmet.gltf';
+        const status = await replicate.predictions.get(prediction.id);
+        console.log(`Prediction ${prediction.id} status:`, status.status);
 
-      // Complete the job
-      const { error: completeError } = await supabaseClient
-        .schema('t3d')
-        .from('jobs')
-        .update({
-          status: 'done',
-          progress: 100,
-          result_url: demoModelUrl,
-          error_message: 'Demo model - AI services are not currently available, showing sample 3D model instead',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', jobId);
+        // Update progress based on status
+        let progress = 25;
+        if (status.status === 'processing') {
+          progress = 25 + (attempts * 2); // Gradually increase progress
+        } else if (status.status === 'succeeded') {
+          progress = 100;
+          completed = true;
+        } else if (status.status === 'failed' || status.status === 'canceled') {
+          throw new Error(`3D generation ${status.status}: ${status.error || 'Unknown error'}`);
+        }
 
-      if (completeError) {
-        console.error('Error completing job:', completeError);
-        return createCorsErrorResponse(`Failed to complete job: ${completeError.message}`, 500);
+        // Update job progress
+        await supabaseClient
+          .schema('t3d')
+          .from('jobs')
+          .update({
+            progress: Math.min(progress, 95),
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', jobId);
+
+        if (completed && status.output) {
+          // Extract the GLB file URL from the output
+          const resultUrl = Array.isArray(status.output) ? status.output[0] : status.output;
+          
+          // Complete the job
+          const { error: completeError } = await supabaseClient
+            .schema('t3d')
+            .from('jobs')
+            .update({
+              status: 'done',
+              progress: 100,
+              result_url: resultUrl,
+              error_message: null,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', jobId);
+
+          if (completeError) {
+            console.error('Error completing job:', completeError);
+            return createCorsErrorResponse(`Failed to complete job: ${completeError.message}`, 500);
+          }
+
+          console.log('3D model generation completed successfully:', jobId);
+
+          return createCorsResponse({
+            success: true,
+            jobId,
+            message: '3D model generated successfully',
+            predictionId: prediction.id,
+            resultUrl
+          });
+        }
       }
 
-      console.log('Job completed successfully:', jobId);
-
-      return createCorsResponse({
-        success: true,
-        jobId,
-        message: 'Demo 3D model generated successfully',
-        demoMode: true
-      });
+      // If we reach here, it timed out
+      throw new Error('3D generation timed out after 5 minutes');
 
     } catch (generationError) {
       console.error('3D generation failed:', generationError);
