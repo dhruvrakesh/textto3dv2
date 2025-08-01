@@ -12753,7 +12753,18 @@ export type Database = {
               p_progress: number
               p_job_type: string
             }
-        Returns: string
+        Returns: {
+          id: string
+          prompt_id: string
+          user_id: string
+          status: string
+          progress: number
+          result_url: string
+          job_type: string
+          error_message: string
+          created_at: string
+          updated_at: string
+        }[]
       }
       create_t3d_prompt: {
         Args: { p_user_id: string; p_version: number; p_json: Json }
