@@ -14,8 +14,9 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     );
 
-    const { jobId, enhancedPrompt } = await req.json();
+    const { jobId, enhancedPrompt, modelPreferences = {} } = await req.json();
     console.log('Starting hybrid 3D generation for job:', jobId);
+    console.log('Model preferences:', modelPreferences);
 
     if (!jobId) {
       return createCorsErrorResponse('Job ID is required', 400);
@@ -34,10 +35,28 @@ serve(async (req) => {
       return createCorsErrorResponse(`Failed to update job status: ${updateError.message}`, 500);
     }
 
-    // Phase 1: Try Hugging Face first
-    console.log('Attempting 3D generation with Hugging Face...');
+    // Determine generation strategy based on user preferences
+    const selectedService = modelPreferences.selected_service || 'auto';
+    const selectedModel = modelPreferences.selected_model || 'auto';
+    const qualityLevel = modelPreferences.quality_level || 'standard';
     
-    try {
+    console.log(`Generation strategy: Service=${selectedService}, Model=${selectedModel}, Quality=${qualityLevel}`);
+
+    // Phase 1: Try primary service based on preference
+    let shouldTryHuggingFace = selectedService === 'huggingface_first' || selectedService === 'huggingface_only' || selectedService === 'auto';
+    let shouldTryMeshy = selectedService === 'meshy_first' || selectedService === 'meshy_only' || selectedService === 'auto';
+    
+    if (selectedService === 'meshy_first') {
+      // Swap order - try Meshy first
+      const temp = shouldTryHuggingFace;
+      shouldTryHuggingFace = shouldTryMeshy;
+      shouldTryMeshy = temp;
+    }
+
+    if (shouldTryHuggingFace) {
+      console.log('Attempting 3D generation with Hugging Face...');
+      
+      try {
       const hfToken = Deno.env.get('HUGGING_FACE_ACCESS_TOKEN');
       if (!hfToken) {
         throw new Error('Hugging Face token not configured');
@@ -107,9 +126,24 @@ serve(async (req) => {
       });
 
     } catch (hfError) {
-      console.log('Hugging Face failed, trying Meshy fallback:', hfError.message);
-      
-      // Phase 2: Fallback to Meshy
+      console.log('Hugging Face failed:', hfError.message);
+      if (selectedService === 'huggingface_only') {
+        console.log('Hugging Face only mode - not trying fallback');
+        await supabaseClient
+          .rpc('update_t3d_job', {
+            p_job_id: jobId,
+            p_status: 'error',
+            p_progress: 0,
+            p_error_message: `Hugging Face generation failed: ${hfError.message}`
+          });
+        return createCorsErrorResponse(`Hugging Face generation failed: ${hfError.message}`, 500);
+      }
+    }
+    }
+    
+    // Phase 2: Try Meshy (either as fallback or primary)
+    if (shouldTryMeshy) {
+      console.log('Attempting 3D generation with Meshy...');
       try {
         const meshyApiKey = Deno.env.get('MESHY_API_KEY');
         if (!meshyApiKey) {
@@ -124,7 +158,23 @@ serve(async (req) => {
           p_progress: 40
         });
 
-        // Step 1: Create Meshy text-to-3D task (Preview)
+        // Determine Meshy settings based on model preference and quality
+        let mode = 'preview';
+        let artStyle = 'realistic';
+        
+        if (selectedModel === 'meshy_refine' || qualityLevel === 'high') {
+          mode = 'refine';
+        }
+        
+        if (selectedModel === 'meshy_preview' || qualityLevel === 'draft') {
+          mode = 'preview';
+        }
+
+        console.log(`Using Meshy mode: ${mode}, art style: ${artStyle}`);
+
+        // Step 1: Create Meshy text-to-3D task with webhook
+        const webhookUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/meshy-webhook`;
+        
         const meshyCreateResponse = await fetch('https://api.meshy.ai/v2/text-to-3d', {
           method: 'POST',
           headers: {
@@ -132,10 +182,11 @@ serve(async (req) => {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            mode: 'preview',
+            mode: mode,
             prompt: enhancedPrompt || 'A detailed 3D model',
-            art_style: 'realistic',
-            negative_prompt: 'low quality, blurry, distorted'
+            art_style: artStyle,
+            negative_prompt: 'low quality, blurry, distorted',
+            webhook_url: webhookUrl
           }),
         });
 
@@ -147,12 +198,31 @@ serve(async (req) => {
         const meshyTask = await meshyCreateResponse.json();
         console.log('Meshy task created:', meshyTask.result);
 
+        // Store the Meshy task ID in the job for webhook processing
+        await supabaseClient
+          .from('t3d_jobs')
+          .update({ meshy_task_id: meshyTask.result })
+          .eq('id', jobId);
+
         // Update progress
         await supabaseClient.rpc('update_t3d_job', {
           p_job_id: jobId,
           p_progress: 60
         });
 
+        console.log('Meshy task created with webhook, job will complete automatically');
+        
+        return createCorsResponse({
+          success: true,
+          jobId,
+          message: 'Meshy 3D generation started with webhook',
+          service: 'meshy',
+          taskId: meshyTask.result,
+          mode: mode
+        });
+
+        // Note: The webhook will handle completion
+        /* Legacy polling code removed - now handled by webhook
         // Step 2: Poll for completion
         let completed = false;
         let attempts = 0;
@@ -217,9 +287,22 @@ serve(async (req) => {
 
         // If we reach here, it timed out
         throw new Error('Meshy generation timed out after 5 minutes');
+        */ // End of legacy polling code
 
       } catch (meshyError) {
-        console.error('Both Hugging Face and Meshy failed:', meshyError);
+        console.error('Meshy failed:', meshyError.message);
+        
+        if (selectedService === 'meshy_only') {
+          console.log('Meshy only mode - not trying fallback');
+          await supabaseClient
+            .rpc('update_t3d_job', {
+              p_job_id: jobId,
+              p_status: 'error',
+              p_progress: 0,
+              p_error_message: `Meshy generation failed: ${meshyError.message}`
+            });
+          return createCorsErrorResponse(`Meshy generation failed: ${meshyError.message}`, 500);
+        }
 
         // Update job with error status
         await supabaseClient
@@ -227,12 +310,23 @@ serve(async (req) => {
             p_job_id: jobId,
             p_status: 'error',
             p_progress: 0,
-            p_error_message: `Both services failed. HF: ${hfError.message}, Meshy: ${meshyError.message}`
+            p_error_message: `All available services failed. Service preference: ${selectedService}. Last error: ${meshyError.message}`
           });
 
-        return createCorsErrorResponse(`All 3D generation services failed. HF: ${hfError.message}, Meshy: ${meshyError.message}`, 500);
+        return createCorsErrorResponse(`All 3D generation services failed. Last error: ${meshyError.message}`, 500);
       }
     }
+
+    // If we get here, no services were attempted or available
+    await supabaseClient
+      .rpc('update_t3d_job', {
+        p_job_id: jobId,
+        p_status: 'error',
+        p_progress: 0,
+        p_error_message: `No 3D generation services available for the selected preference: ${selectedService}`
+      });
+
+    return createCorsErrorResponse(`No 3D generation services available for the selected preference: ${selectedService}`, 500);
 
   } catch (error) {
     console.error('Error in generate-3d-model function:', error);

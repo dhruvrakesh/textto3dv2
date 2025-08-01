@@ -67,6 +67,14 @@ serve(async (req) => {
     }
     console.log('Prompt data validation passed');
 
+    // Extract model selection preferences
+    const modelPreferences = {
+      selected_model: promptData.selected_model || 'auto',
+      selected_service: promptData.selected_service || 'auto', 
+      quality_level: promptData.quality_level || 'standard'
+    };
+    console.log('Model preferences:', modelPreferences);
+
     // Create prompt using RPC function
     const { data: prompt, error: promptError } = await supabaseClient
       .rpc('create_t3d_prompt', {
@@ -88,14 +96,17 @@ serve(async (req) => {
 
     console.log('Created prompt:', prompt.id);
 
-    // Create job using RPC function
+    // Create job using RPC function with model preferences
     const { data: job, error: jobError } = await supabaseClient
       .rpc('create_t3d_job', {
         p_prompt_id: prompt.id,
         p_user_id: userId,
         p_status: 'queued',
         p_progress: 0,
-        p_job_type: '3d_model_generation'
+        p_job_type: '3d_model_generation',
+        p_selected_model: modelPreferences.selected_model,
+        p_selected_service: modelPreferences.selected_service,
+        p_quality_level: modelPreferences.quality_level
       })
       .single();
 
@@ -140,7 +151,8 @@ serve(async (req) => {
       const { error: generateError } = await supabaseClient.functions.invoke('generate-3d-model', {
         body: { 
           jobId: job.id,
-          enhancedPrompt
+          enhancedPrompt,
+          modelPreferences
         }
       });
 

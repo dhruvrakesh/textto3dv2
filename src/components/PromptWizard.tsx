@@ -21,6 +21,9 @@ interface PromptData {
   mood_keywords: string[];
   uploaded_refs: Array<{ type: string; bucket: string; path: string }>;
   description: string;
+  selected_model: string;
+  selected_service: string;
+  quality_level: string;
 }
 
 interface PromptWizardProps {
@@ -38,7 +41,10 @@ const PromptWizard = ({ onComplete }: PromptWizardProps) => {
     color_scheme: [],
     mood_keywords: [],
     uploaded_refs: [],
-    description: ""
+    description: "",
+    selected_model: "auto",
+    selected_service: "auto",
+    quality_level: "standard"
   });
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -46,7 +52,7 @@ const PromptWizard = ({ onComplete }: PromptWizardProps) => {
   const { user } = useAuth();
   const { processPrompt } = useJobs();
 
-  const totalSteps = 4;
+  const totalSteps = 5;
   const progress = (currentStep / totalSteps) * 100;
 
   const spaceTypes = ["kitchen", "living_room", "bedroom", "bathroom", "office", "dining_room"];
@@ -184,6 +190,8 @@ const PromptWizard = ({ onComplete }: PromptWizardProps) => {
         return true; // Optional step
       case 4:
         return promptData.description.length > 0;
+      case 5:
+        return true; // Model selection is optional
       default:
         return false;
     }
@@ -518,6 +526,85 @@ const PromptWizard = ({ onComplete }: PromptWizardProps) => {
               <pre className="text-xs overflow-auto max-h-40">
                 {JSON.stringify(promptData, null, 2)}
               </pre>
+            </div>
+          </div>
+        )}
+
+        {currentStep === 5 && (
+          <div className="space-y-4">
+            <CardDescription>
+              Choose your preferred AI model and generation settings for optimal results.
+            </CardDescription>
+            
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>AI Service Preference</Label>
+                <Select value={promptData.selected_service} onValueChange={(value) => 
+                  setPromptData(prev => ({ ...prev, selected_service: value }))
+                }>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select service preference" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="auto">Auto (Best Available)</SelectItem>
+                    <SelectItem value="huggingface_first">Hugging Face Preferred</SelectItem>
+                    <SelectItem value="meshy_first">Meshy Preferred</SelectItem>
+                    <SelectItem value="huggingface_only">Hugging Face Only</SelectItem>
+                    <SelectItem value="meshy_only">Meshy Only</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Auto mode tries the best available service and falls back to alternatives if needed.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Model Selection</Label>
+                <Select value={promptData.selected_model} onValueChange={(value) => 
+                  setPromptData(prev => ({ ...prev, selected_model: value }))
+                }>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select model" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="auto">Auto (Recommended)</SelectItem>
+                    <SelectItem value="hunyuan3d">Hunyuan3D-2.1 (Fast)</SelectItem>
+                    <SelectItem value="meshy_preview">Meshy Preview (Balanced)</SelectItem>
+                    <SelectItem value="meshy_refine">Meshy Refine (High Quality)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Auto selects the best model based on your prompt complexity and service availability.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Quality Level</Label>
+                <Select value={promptData.quality_level} onValueChange={(value) => 
+                  setPromptData(prev => ({ ...prev, quality_level: value }))
+                }>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select quality level" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="draft">Draft (Fastest)</SelectItem>
+                    <SelectItem value="standard">Standard (Recommended)</SelectItem>
+                    <SelectItem value="high">High Quality (Slower)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Higher quality takes longer but produces more detailed and refined 3D models.
+                </p>
+              </div>
+
+              <div className="p-4 bg-accent/20 rounded-lg border border-accent/40">
+                <h4 className="font-medium mb-2">Selected Configuration</h4>
+                <div className="text-sm space-y-1">
+                  <p><span className="font-medium">Service:</span> {promptData.selected_service === 'auto' ? 'Auto (Best Available)' : promptData.selected_service.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</p>
+                  <p><span className="font-medium">Model:</span> {promptData.selected_model === 'auto' ? 'Auto (Recommended)' : promptData.selected_model.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</p>
+                  <p><span className="font-medium">Quality:</span> {promptData.quality_level.replace(/\b\w/g, l => l.toUpperCase())}</p>
+                </div>
+              </div>
             </div>
           </div>
         )}
