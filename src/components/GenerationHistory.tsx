@@ -119,7 +119,7 @@ const GenerationHistory = ({ onView, onDelete, onRetry }: GenerationHistoryProps
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <h4 className="font-medium text-foreground line-clamp-1">
-                      {job.prompts?.space_type} - {job.prompts?.style}
+                      {job.prompts?.json?.space_type || 'Unknown'} - {job.prompts?.json?.style || 'Unknown'}
                     </h4>
                     <Badge 
                       variant={
@@ -176,7 +176,7 @@ const GenerationHistory = ({ onView, onDelete, onRetry }: GenerationHistoryProps
                 )}
 
                 <p className="text-sm text-muted-foreground line-clamp-2">
-                  {job.prompts?.description || 'No description available'}
+                  {job.prompts?.json?.description || 'No description available'}
                 </p>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center text-xs text-muted-foreground space-x-4">

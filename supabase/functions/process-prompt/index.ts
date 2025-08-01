@@ -47,13 +47,17 @@ serve(async (req) => {
 
     // Create prompt in prompts table
     const { data: prompt, error: promptError } = await supabaseClient
+      .schema('t3d')
       .from('prompts')
       .insert({
         user_id: userId,
-        space_type: promptData.space_type || 'room',
-        style: promptData.style || 'modern',
-        description: promptData.description || '',
-        json: promptData.json || {}
+        version: 1,
+        json: {
+          space_type: promptData.space_type || 'room',
+          style: promptData.style || 'modern',
+          description: promptData.description || '',
+          ...promptData
+        }
       })
       .select()
       .single();
@@ -67,6 +71,7 @@ serve(async (req) => {
 
     // Create job in jobs table
     const { data: job, error: jobError } = await supabaseClient
+      .schema('t3d')
       .from('jobs')
       .insert({
         prompt_id: prompt.id,
@@ -122,6 +127,7 @@ serve(async (req) => {
         
         // Update job status to error
         await supabaseClient
+          .schema('t3d')
           .from('jobs')
           .update({
             status: 'error',
@@ -138,6 +144,7 @@ serve(async (req) => {
       
       // Update job status to error
       await supabaseClient
+        .schema('t3d')
         .from('jobs')
         .update({
           status: 'error',

@@ -17,10 +17,16 @@ export interface Job {
   updated_at: string;
   prompts?: {
     id: string;
-    space_type: string;
-    style: string;
-    description: string;
-    json: any;
+    user_id: string;
+    version: number;
+    json: {
+      space_type?: string;
+      style?: string;
+      description?: string;
+      [key: string]: any;
+    };
+    created_at: string;
+    updated_at: string;
   };
 }
 
@@ -120,7 +126,7 @@ export const useJobs = () => {
         'postgres_changes',
         {
           event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
-          schema: 'public',
+          schema: 't3d',
           table: 'jobs',
           filter: `user_id=eq.${user.id}`
         },

@@ -24,6 +24,7 @@ serve(async (req) => {
 
     // First, get jobs from t3d.jobs table
     const { data: jobs, error: jobsError } = await supabaseClient
+      .schema('t3d')
       .from('jobs')
       .select(`
         id,
@@ -57,13 +58,15 @@ serve(async (req) => {
     if (promptIds.length > 0) {
       // Fetch corresponding prompts
       const { data: promptsData, error: promptsError } = await supabaseClient
+        .schema('t3d')
         .from('prompts')
         .select(`
           id,
-          space_type,
-          style,
-          description,
-          json
+          user_id,
+          version,
+          json,
+          created_at,
+          updated_at
         `)
         .in('id', promptIds);
 

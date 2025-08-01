@@ -47,6 +47,7 @@ serve(async (req) => {
 
     // First, verify the job exists and belongs to the user
     const { data: existingJob, error: fetchError } = await supabaseClient
+      .schema('t3d')
       .from('jobs')
       .select('id, status, prompt_id, user_id')
       .eq('id', jobId)
@@ -65,6 +66,7 @@ serve(async (req) => {
 
     // Reset the job status
     const { error: resetError } = await supabaseClient
+      .schema('t3d')
       .from('jobs')
       .update({
         status: 'queued',
@@ -82,8 +84,9 @@ serve(async (req) => {
 
     // Get the associated prompt to restart generation
     const { data: prompt, error: promptError } = await supabaseClient
+      .schema('t3d')
       .from('prompts')
-      .select('description, space_type, style')
+      .select('json')
       .eq('id', existingJob.prompt_id)
       .single();
 
@@ -94,10 +97,10 @@ serve(async (req) => {
 
     // Start the 3D generation process again
     try {
-      const { error: generateError } = await supabaseClient.functions.invoke('generate-3d-model', {
+        const { error: generateError } = await supabaseClient.functions.invoke('generate-3d-model', {
         body: { 
           jobId: jobId,
-          enhancedPrompt: prompt.description
+          enhancedPrompt: prompt.json?.description || 'Generate a 3D model'
         }
       });
 
@@ -106,6 +109,7 @@ serve(async (req) => {
         
         // Update job back to error status
         await supabaseClient
+          .schema('t3d')
           .from('jobs')
           .update({
             status: 'error',
@@ -129,6 +133,7 @@ serve(async (req) => {
       
       // Update job back to error status
       await supabaseClient
+        .schema('t3d')
         .from('jobs')
         .update({
           status: 'error',

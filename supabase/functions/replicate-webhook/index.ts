@@ -27,6 +27,7 @@ serve(async (req) => {
 
     // Find the job in our database using the Replicate prediction ID
     const { data: jobs, error: findError } = await supabaseClient
+      .schema('t3d')
       .from('jobs')
       .select('id, status, user_id')
       .eq('result_url', jobId) // We'll store the prediction ID temporarily in result_url
@@ -76,6 +77,7 @@ serve(async (req) => {
 
     // Update the job in our database
     const { error: updateError } = await supabaseClient
+      .schema('t3d')
       .from('jobs')
       .update(updateData)
       .eq('id', jobs.id)
