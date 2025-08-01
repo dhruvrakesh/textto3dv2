@@ -95,7 +95,7 @@ serve(async (req) => {
         p_user_id: userId,
         p_status: 'queued',
         p_progress: 0,
-        p_job_type: 'text-to-3d'
+        p_job_type: '3d_model_generation'
       })
       .single();
 
