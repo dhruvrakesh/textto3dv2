@@ -30,7 +30,7 @@ serve(async (req) => {
       .schema('t3d')
       .from('jobs')
       .select('id, status, user_id')
-      .eq('result_url', jobId) // We'll store the prediction ID temporarily in result_url
+      .eq('replicate_prediction_id', jobId)
       .single()
 
     if (findError || !jobs) {
