@@ -12735,24 +12735,16 @@ export type Database = {
         }[]
       }
       create_t3d_job: {
-        Args:
-          | {
-              p_prompt_id: string
-              p_user_id: string
-              p_status: string
-              p_progress: number
-              p_job_type: string
-            }
-          | {
-              p_prompt_id: string
-              p_user_id: string
-              p_status: string
-              p_progress: number
-              p_job_type: string
-              p_selected_model: string
-              p_selected_service: string
-              p_quality_level: string
-            }
+        Args: {
+          p_prompt_id: string
+          p_user_id: string
+          p_status: string
+          p_progress: number
+          p_job_type: string
+          p_selected_model: string
+          p_selected_service: string
+          p_quality_level: string
+        }
         Returns: {
           id: string
           prompt_id: string
