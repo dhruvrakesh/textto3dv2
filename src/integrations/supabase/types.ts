@@ -13141,6 +13141,7 @@ export type Database = {
           error_message: string
           created_at: string
           updated_at: string
+          replicate_prediction_id: string
         }[]
       }
       get_t3d_prompt_by_id: {
