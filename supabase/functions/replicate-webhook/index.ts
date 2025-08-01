@@ -25,12 +25,11 @@ serve(async (req) => {
       return createCorsErrorResponse('Invalid webhook: missing job ID', 400)
     }
 
-    // Find the job in our database using the Replicate prediction ID
+    // Find the job using RPC function
     const { data: jobs, error: findError } = await supabaseClient
-      .schema('t3d')
-      .from('jobs')
-      .select('id, status, user_id')
-      .eq('replicate_prediction_id', jobId)
+      .rpc('find_t3d_job_by_prediction', {
+        p_prediction_id: jobId
+      })
       .single()
 
     if (findError || !jobs) {
@@ -75,12 +74,15 @@ serve(async (req) => {
         return createCorsResponse({ message: 'Status ignored' })
     }
 
-    // Update the job in our database
+    // Update the job using RPC function
     const { error: updateError } = await supabaseClient
-      .schema('t3d')
-      .from('jobs')
-      .update(updateData)
-      .eq('id', jobs.id)
+      .rpc('update_t3d_job', {
+        p_job_id: jobs.id,
+        p_status: updateData.status,
+        p_progress: updateData.progress,
+        p_result_url: updateData.result_url,
+        p_error_message: updateData.error_message
+      })
 
     if (updateError) {
       console.error('Failed to update job:', updateError)

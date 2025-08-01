@@ -45,14 +45,17 @@ serve(async (req) => {
       return createCorsErrorResponse('Job ID is required', 400);
     }
 
-    // First, verify the job exists and belongs to the user
+    // First, verify the job exists and belongs to the user using RPC function
     const { data: existingJob, error: fetchError } = await supabaseClient
-      .schema('t3d')
-      .from('jobs')
-      .select('id, status, prompt_id, user_id')
-      .eq('id', jobId)
-      .eq('user_id', userId)
+      .rpc('get_t3d_job_by_id', {
+        p_job_id: jobId
+      })
       .single();
+
+    // Check if job belongs to user (RPC doesn't enforce user filtering for security)
+    if (existingJob && existingJob.user_id !== userId) {
+      return createCorsErrorResponse('Job not found or access denied', 404);
+    }
 
     if (fetchError || !existingJob) {
       console.error('Job not found or access denied:', fetchError);
@@ -64,30 +67,26 @@ serve(async (req) => {
       return createCorsErrorResponse('Job can only be retried if it has failed', 400);
     }
 
-    // Reset the job status
+    // Reset the job status using RPC function
     const { error: resetError } = await supabaseClient
-      .schema('t3d')
-      .from('jobs')
-      .update({
-        status: 'queued',
-        progress: 0,
-        error_message: null,
-        result_url: null,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', jobId);
+      .rpc('update_t3d_job', {
+        p_job_id: jobId,
+        p_status: 'queued',
+        p_progress: 0,
+        p_error_message: null,
+        p_result_url: null
+      });
 
     if (resetError) {
       console.error('Failed to reset job:', resetError);
       return createCorsErrorResponse(`Failed to reset job: ${resetError.message}`, 500);
     }
 
-    // Get the associated prompt to restart generation
+    // Get the associated prompt using RPC function
     const { data: prompt, error: promptError } = await supabaseClient
-      .schema('t3d')
-      .from('prompts')
-      .select('json')
-      .eq('id', existingJob.prompt_id)
+      .rpc('get_t3d_prompt_by_id', {
+        p_prompt_id: existingJob.prompt_id
+      })
       .single();
 
     if (promptError || !prompt) {
@@ -107,15 +106,13 @@ serve(async (req) => {
       if (generateError) {
         console.error('Failed to restart generation:', generateError);
         
-        // Update job back to error status
+        // Update job back to error status using RPC function
         await supabaseClient
-          .schema('t3d')
-          .from('jobs')
-          .update({
-            status: 'error',
-            error_message: `Retry failed: ${generateError.message}`
-          })
-          .eq('id', jobId);
+          .rpc('update_t3d_job', {
+            p_job_id: jobId,
+            p_status: 'error',
+            p_error_message: `Retry failed: ${generateError.message}`
+          });
 
         return createCorsErrorResponse(`Failed to restart generation: ${generateError.message}`, 500);
       }
@@ -131,15 +128,13 @@ serve(async (req) => {
     } catch (error) {
       console.error('Error calling generate-3d-model:', error);
       
-      // Update job back to error status
+      // Update job back to error status using RPC function
       await supabaseClient
-        .schema('t3d')
-        .from('jobs')
-        .update({
-          status: 'error',
-          error_message: `Retry failed: ${error.message}`
-        })
-        .eq('id', jobId);
+        .rpc('update_t3d_job', {
+          p_job_id: jobId,
+          p_status: 'error',
+          p_error_message: `Retry failed: ${error.message}`
+        });
 
       return createCorsErrorResponse(`Retry failed: ${error.message}`, 500);
     }

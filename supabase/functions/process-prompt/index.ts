@@ -67,21 +67,18 @@ serve(async (req) => {
     }
     console.log('Prompt data validation passed');
 
-    // Create prompt in prompts table
+    // Create prompt using RPC function
     const { data: prompt, error: promptError } = await supabaseClient
-      .schema('t3d')
-      .from('prompts')
-      .insert({
-        user_id: userId,
-        version: 1,
-        json: {
+      .rpc('create_t3d_prompt', {
+        p_user_id: userId,
+        p_version: 1,
+        p_json: {
           space_type: promptData.space_type || 'room',
           style: promptData.style || 'modern',
           description: promptData.description || '',
           ...promptData
         }
       })
-      .select()
       .single();
 
     if (promptError) {
@@ -91,18 +88,15 @@ serve(async (req) => {
 
     console.log('Created prompt:', prompt.id);
 
-    // Create job in jobs table
+    // Create job using RPC function
     const { data: job, error: jobError } = await supabaseClient
-      .schema('t3d')
-      .from('jobs')
-      .insert({
-        prompt_id: prompt.id,
-        user_id: userId,
-        status: 'queued',
-        progress: 0,
-        job_type: 'text-to-3d'
+      .rpc('create_t3d_job', {
+        p_prompt_id: prompt.id,
+        p_user_id: userId,
+        p_status: 'queued',
+        p_progress: 0,
+        p_job_type: 'text-to-3d'
       })
-      .select()
       .single();
 
     if (jobError) {
@@ -147,15 +141,13 @@ serve(async (req) => {
       if (generateError) {
         console.error('Error starting 3D generation:', generateError);
         
-        // Update job status to error
+        // Update job status to error using RPC function
         await supabaseClient
-          .schema('t3d')
-          .from('jobs')
-          .update({
-            status: 'error',
-            error_message: generateError.message || 'Failed to start 3D generation'
-          })
-          .eq('id', job.id);
+          .rpc('update_t3d_job', {
+            p_job_id: job.id,
+            p_status: 'error',
+            p_error_message: generateError.message || 'Failed to start 3D generation'
+          });
 
         return createCorsErrorResponse(`Failed to start 3D generation: ${generateError.message}`, 500);
       }
@@ -164,15 +156,13 @@ serve(async (req) => {
     } catch (error) {
       console.error('Generate 3D model function failed:', error);
       
-      // Update job status to error
+      // Update job status to error using RPC function
       await supabaseClient
-        .schema('t3d')
-        .from('jobs')
-        .update({
-          status: 'error',
-          error_message: error.message || 'Failed to start 3D generation'
-        })
-        .eq('id', job.id);
+        .rpc('update_t3d_job', {
+          p_job_id: job.id,
+          p_status: 'error',
+          p_error_message: error.message || 'Failed to start 3D generation'
+        });
 
       return createCorsErrorResponse(`Failed to start 3D generation: ${error.message}`, 500);
     }

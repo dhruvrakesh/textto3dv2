@@ -22,16 +22,13 @@ serve(async (req) => {
       return createCorsErrorResponse('Job ID is required', 400);
     }
 
-    // Update job status to running
+    // Update job status to running using RPC function
     const { error: updateError } = await supabaseClient
-      .schema('t3d')
-      .from('jobs')
-      .update({
-        status: 'running',
-        progress: 10,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', jobId);
+      .rpc('update_t3d_job', {
+        p_job_id: jobId,
+        p_status: 'running',
+        p_progress: 10
+      });
 
     if (updateError) {
       console.error('Error updating job status:', updateError);
@@ -61,16 +58,13 @@ serve(async (req) => {
 
       console.log('Replicate prediction created:', prediction.id);
 
-      // Update job with prediction ID and progress
+      // Update job with prediction ID and progress using RPC function
       await supabaseClient
-        .schema('t3d')
-        .from('jobs')
-        .update({
-          progress: 25,
-          replicate_prediction_id: prediction.id,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', jobId);
+        .rpc('update_t3d_job', {
+          p_job_id: jobId,
+          p_progress: 25,
+          p_replicate_prediction_id: prediction.id
+        });
 
       // Poll for completion (with timeout)
       let completed = false;
@@ -95,32 +89,26 @@ serve(async (req) => {
           throw new Error(`3D generation ${status.status}: ${status.error || 'Unknown error'}`);
         }
 
-        // Update job progress
+        // Update job progress using RPC function
         await supabaseClient
-          .schema('t3d')
-          .from('jobs')
-          .update({
-            progress: Math.min(progress, 95),
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', jobId);
+          .rpc('update_t3d_job', {
+            p_job_id: jobId,
+            p_progress: Math.min(progress, 95)
+          });
 
         if (completed && status.output) {
           // Extract the GLB file URL from the output
           const resultUrl = Array.isArray(status.output) ? status.output[0] : status.output;
           
-          // Complete the job
+          // Complete the job using RPC function
           const { error: completeError } = await supabaseClient
-            .schema('t3d')
-            .from('jobs')
-            .update({
-              status: 'done',
-              progress: 100,
-              result_url: resultUrl,
-              error_message: null,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', jobId);
+            .rpc('update_t3d_job', {
+              p_job_id: jobId,
+              p_status: 'done',
+              p_progress: 100,
+              p_result_url: resultUrl,
+              p_error_message: null
+            });
 
           if (completeError) {
             console.error('Error completing job:', completeError);
@@ -145,17 +133,14 @@ serve(async (req) => {
     } catch (generationError) {
       console.error('3D generation failed:', generationError);
 
-      // Update job with error status
+      // Update job with error status using RPC function
       await supabaseClient
-        .schema('t3d')
-        .from('jobs')
-        .update({
-          status: 'error',
-          progress: 0,
-          error_message: generationError.message || '3D model generation failed',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', jobId);
+        .rpc('update_t3d_job', {
+          p_job_id: jobId,
+          p_status: 'error',
+          p_progress: 0,
+          p_error_message: generationError.message || '3D model generation failed'
+        });
 
       return createCorsErrorResponse(`3D generation failed: ${generationError.message}`, 500);
     }
