@@ -4,36 +4,77 @@ import { HfInference } from 'https://esm.sh/@huggingface/inference@2.3.2'
 import { corsHeaders, handleCorsOptions, createCorsResponse, createCorsErrorResponse } from '../_shared/cors.ts'
 
 serve(async (req) => {
+  console.log('=== GENERATE-3D-MODEL FUNCTION STARTED ===');
+  console.log('Timestamp:', new Date().toISOString());
+  console.log('Request method:', req.method);
+  console.log('Request URL:', req.url);
+  
   if (req.method === 'OPTIONS') {
+    console.log('Handling CORS preflight');
     return handleCorsOptions();
   }
 
   try {
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-    );
+    // Log environment variables (safely)
+    console.log('=== ENVIRONMENT CHECK ===');
+    console.log('SUPABASE_URL exists:', !!Deno.env.get('SUPABASE_URL'));
+    console.log('SUPABASE_SERVICE_ROLE_KEY exists:', !!Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'));
+    console.log('HUGGING_FACE_ACCESS_TOKEN exists:', !!Deno.env.get('HUGGING_FACE_ACCESS_TOKEN'));
+    console.log('MESHY_API_KEY exists:', !!Deno.env.get('MESHY_API_KEY'));
+    
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    if (!supabaseUrl || !serviceRoleKey) {
+      throw new Error('Missing required Supabase environment variables');
+    }
+    
+    console.log('Creating Supabase client...');
+    const supabaseClient = createClient(supabaseUrl, serviceRoleKey);
+    console.log('Supabase client created successfully');
 
-    const { jobId, enhancedPrompt, modelPreferences = {} } = await req.json();
-    console.log('Starting hybrid 3D generation for job:', jobId);
-    console.log('Model preferences:', modelPreferences);
+    console.log('=== PARSING REQUEST BODY ===');
+    const requestBody = await req.json();
+    console.log('Raw request body:', JSON.stringify(requestBody, null, 2));
+    
+    const { jobId, enhancedPrompt, modelPreferences = {} } = requestBody;
+    console.log('Extracted jobId:', jobId);
+    console.log('Enhanced prompt length:', enhancedPrompt?.length || 0);
+    console.log('Model preferences:', JSON.stringify(modelPreferences, null, 2));
 
     if (!jobId) {
+      console.error('Missing jobId in request');
       return createCorsErrorResponse('Job ID is required', 400);
     }
 
     // Update job status to running
-    const { error: updateError } = await supabaseClient
+    console.log('=== UPDATING JOB STATUS TO RUNNING ===');
+    console.log('Calling update_t3d_job RPC with:', {
+      p_job_id: jobId,
+      p_status: 'running',
+      p_progress: 10
+    });
+    
+    const { data: updateData, error: updateError } = await supabaseClient
       .rpc('update_t3d_job', {
         p_job_id: jobId,
         p_status: 'running',
         p_progress: 10
       });
 
+    console.log('RPC update_t3d_job response data:', updateData);
+    console.log('RPC update_t3d_job error:', updateError);
+
     if (updateError) {
-      console.error('Error updating job status:', updateError);
+      console.error('=== RPC UPDATE ERROR ===');
+      console.error('Error type:', typeof updateError);
+      console.error('Error message:', updateError.message);
+      console.error('Error details:', JSON.stringify(updateError, null, 2));
+      console.error('Error stack:', updateError.stack);
       return createCorsErrorResponse(`Failed to update job status: ${updateError.message}`, 500);
     }
+    
+    console.log('Job status updated successfully to running');
 
     // Determine generation strategy based on user preferences
     const selectedService = modelPreferences.selected_service || 'auto';
@@ -54,24 +95,42 @@ serve(async (req) => {
     }
 
     if (shouldTryHuggingFace) {
-      console.log('Attempting 3D generation with Hugging Face...');
+      console.log('=== ATTEMPTING HUGGING FACE GENERATION ===');
       
       try {
       const hfToken = Deno.env.get('HUGGING_FACE_ACCESS_TOKEN');
+      console.log('HF token exists:', !!hfToken);
+      console.log('HF token length:', hfToken?.length || 0);
+      
       if (!hfToken) {
         throw new Error('Hugging Face token not configured');
       }
 
+      console.log('Creating HfInference client...');
       const hf = new HfInference(hfToken);
+      console.log('HfInference client created successfully');
       
       // Update progress
-      await supabaseClient.rpc('update_t3d_job', {
+      console.log('Updating progress to 30...');
+      const { data: progressData, error: progressError } = await supabaseClient.rpc('update_t3d_job', {
         p_job_id: jobId,
         p_progress: 30
       });
+      
+      if (progressError) {
+        console.error('Progress update error:', progressError);
+      } else {
+        console.log('Progress updated successfully:', progressData);
+      }
 
       // Try Hunyuan3D-2.1 model for 3D generation
-      console.log('Using Hugging Face Hunyuan3D model with prompt:', enhancedPrompt?.substring(0, 100) + '...');
+      console.log('=== CALLING HUGGING FACE API ===');
+      console.log('Model: tencent/Hunyuan3D-2.1');
+      console.log('Prompt preview:', enhancedPrompt?.substring(0, 100) + '...');
+      console.log('Full prompt length:', enhancedPrompt?.length || 0);
+      
+      console.log('Making HF API request...');
+      const requestStartTime = Date.now();
       
       const result = await hf.request({
         model: "tencent/Hunyuan3D-2.1",
@@ -82,12 +141,25 @@ serve(async (req) => {
           seed: Math.floor(Math.random() * 1000000)
         }
       });
+      
+      const requestDuration = Date.now() - requestStartTime;
+      console.log('HF API request completed in:', requestDuration, 'ms');
+      console.log('HF API result type:', typeof result);
+      console.log('HF API result keys:', result ? Object.keys(result) : 'null');
+      console.log('HF API result preview:', JSON.stringify(result, null, 2).substring(0, 500));
 
       // Update progress
-      await supabaseClient.rpc('update_t3d_job', {
+      console.log('Updating progress to 80...');
+      const { data: progress80Data, error: progress80Error } = await supabaseClient.rpc('update_t3d_job', {
         p_job_id: jobId,
         p_progress: 80
       });
+      
+      if (progress80Error) {
+        console.error('Progress 80 update error:', progress80Error);
+      } else {
+        console.log('Progress 80 updated successfully:', progress80Data);
+      }
 
       // Process the result (assuming it returns a URL or blob data)
       let resultUrl;
@@ -126,26 +198,45 @@ serve(async (req) => {
       });
 
     } catch (hfError) {
-      console.log('Hugging Face failed:', hfError.message);
+      console.error('=== HUGGING FACE ERROR ===');
+      console.error('Error type:', typeof hfError);
+      console.error('Error name:', hfError.name);
+      console.error('Error message:', hfError.message);
+      console.error('Error stack:', hfError.stack);
+      console.error('Error details:', JSON.stringify(hfError, null, 2));
+      
       if (selectedService === 'huggingface_only') {
         console.log('Hugging Face only mode - not trying fallback');
-        await supabaseClient
+        
+        console.log('Updating job status to error...');
+        const { data: errorData, error: errorUpdateError } = await supabaseClient
           .rpc('update_t3d_job', {
             p_job_id: jobId,
             p_status: 'error',
             p_progress: 0,
             p_error_message: `Hugging Face generation failed: ${hfError.message}`
           });
+          
+        if (errorUpdateError) {
+          console.error('Error updating job to error status:', errorUpdateError);
+        } else {
+          console.log('Job updated to error status successfully:', errorData);
+        }
+        
         return createCorsErrorResponse(`Hugging Face generation failed: ${hfError.message}`, 500);
       }
+      console.log('Hugging Face failed, will try fallback service if available');
     }
     }
     
     // Phase 2: Try Meshy (either as fallback or primary)
     if (shouldTryMeshy) {
-      console.log('Attempting 3D generation with Meshy...');
+      console.log('=== ATTEMPTING MESHY GENERATION ===');
       try {
         const meshyApiKey = Deno.env.get('MESHY_API_KEY');
+        console.log('Meshy API key exists:', !!meshyApiKey);
+        console.log('Meshy API key length:', meshyApiKey?.length || 0);
+        
         if (!meshyApiKey) {
           throw new Error('Meshy API key not configured');
         }
@@ -153,10 +244,17 @@ serve(async (req) => {
         console.log('Starting Meshy 3D generation...');
         
         // Update progress
-        await supabaseClient.rpc('update_t3d_job', {
+        console.log('Updating progress to 40...');
+        const { data: progress40Data, error: progress40Error } = await supabaseClient.rpc('update_t3d_job', {
           p_job_id: jobId,
           p_progress: 40
         });
+        
+        if (progress40Error) {
+          console.error('Progress 40 update error:', progress40Error);
+        } else {
+          console.log('Progress 40 updated successfully:', progress40Data);
+        }
 
         // Determine Meshy settings based on model preference and quality
         let mode = 'preview';
@@ -174,24 +272,38 @@ serve(async (req) => {
 
         // Step 1: Create Meshy text-to-3D task with webhook
         const webhookUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/meshy-webhook`;
+        console.log('Webhook URL:', webhookUrl);
         
+        const meshyRequestBody = {
+          mode: mode,
+          prompt: enhancedPrompt || 'A detailed 3D model',
+          art_style: artStyle,
+          negative_prompt: 'low quality, blurry, distorted',
+          webhook_url: webhookUrl
+        };
+        
+        console.log('=== CALLING MESHY API ===');
+        console.log('Request body:', JSON.stringify(meshyRequestBody, null, 2));
+        console.log('Making request to: https://api.meshy.ai/v2/text-to-3d');
+        
+        const meshyRequestStartTime = Date.now();
         const meshyCreateResponse = await fetch('https://api.meshy.ai/v2/text-to-3d', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${meshyApiKey}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            mode: mode,
-            prompt: enhancedPrompt || 'A detailed 3D model',
-            art_style: artStyle,
-            negative_prompt: 'low quality, blurry, distorted',
-            webhook_url: webhookUrl
-          }),
+          body: JSON.stringify(meshyRequestBody),
         });
+        
+        const meshyRequestDuration = Date.now() - meshyRequestStartTime;
+        console.log('Meshy API request completed in:', meshyRequestDuration, 'ms');
+        console.log('Meshy response status:', meshyCreateResponse.status);
+        console.log('Meshy response headers:', JSON.stringify(Object.fromEntries(meshyCreateResponse.headers.entries()), null, 2));
 
         if (!meshyCreateResponse.ok) {
           const errorText = await meshyCreateResponse.text();
+          console.error('Meshy API error response:', errorText);
           throw new Error(`Meshy API error: ${meshyCreateResponse.status} - ${errorText}`);
         }
 
@@ -290,28 +402,49 @@ serve(async (req) => {
         */ // End of legacy polling code
 
       } catch (meshyError) {
-        console.error('Meshy failed:', meshyError.message);
+        console.error('=== MESHY ERROR ===');
+        console.error('Error type:', typeof meshyError);
+        console.error('Error name:', meshyError.name);
+        console.error('Error message:', meshyError.message);
+        console.error('Error stack:', meshyError.stack);
+        console.error('Error details:', JSON.stringify(meshyError, null, 2));
         
         if (selectedService === 'meshy_only') {
           console.log('Meshy only mode - not trying fallback');
-          await supabaseClient
+          
+          console.log('Updating job status to error (Meshy only)...');
+          const { data: meshyErrorData, error: meshyErrorUpdateError } = await supabaseClient
             .rpc('update_t3d_job', {
               p_job_id: jobId,
               p_status: 'error',
               p_progress: 0,
               p_error_message: `Meshy generation failed: ${meshyError.message}`
             });
+            
+          if (meshyErrorUpdateError) {
+            console.error('Error updating job to error status (Meshy):', meshyErrorUpdateError);
+          } else {
+            console.log('Job updated to error status successfully (Meshy):', meshyErrorData);
+          }
+          
           return createCorsErrorResponse(`Meshy generation failed: ${meshyError.message}`, 500);
         }
 
         // Update job with error status
-        await supabaseClient
+        console.log('Updating job status to error (all services failed)...');
+        const { data: allFailedData, error: allFailedUpdateError } = await supabaseClient
           .rpc('update_t3d_job', {
             p_job_id: jobId,
             p_status: 'error',
             p_progress: 0,
             p_error_message: `All available services failed. Service preference: ${selectedService}. Last error: ${meshyError.message}`
           });
+          
+        if (allFailedUpdateError) {
+          console.error('Error updating job to error status (all failed):', allFailedUpdateError);
+        } else {
+          console.log('Job updated to error status successfully (all failed):', allFailedData);
+        }
 
         return createCorsErrorResponse(`All 3D generation services failed. Last error: ${meshyError.message}`, 500);
       }
@@ -329,7 +462,13 @@ serve(async (req) => {
     return createCorsErrorResponse(`No 3D generation services available for the selected preference: ${selectedService}`, 500);
 
   } catch (error) {
-    console.error('Error in generate-3d-model function:', error);
+    console.error('=== GENERATE-3D-MODEL FUNCTION ERROR ===');
+    console.error('Error type:', typeof error);
+    console.error('Error name:', error.name);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    console.error('Error details:', JSON.stringify(error, null, 2));
+    console.error('Function execution completed with error at:', new Date().toISOString());
     return createCorsErrorResponse(error.message || 'Internal server error', 500);
   }
 });
