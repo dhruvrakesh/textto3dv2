@@ -13728,14 +13728,22 @@ export type Database = {
         Returns: undefined
       }
       update_t3d_job: {
-        Args: {
-          p_job_id: string
-          p_status?: string
-          p_progress?: number
-          p_result_url?: string
-          p_error_message?: string
-          p_replicate_prediction_id?: string
-        }
+        Args:
+          | {
+              p_job_id: string
+              p_status: string
+              p_progress?: number
+              p_result_url?: string
+              p_error_message?: string
+            }
+          | {
+              p_job_id: string
+              p_status?: string
+              p_progress?: number
+              p_result_url?: string
+              p_error_message?: string
+              p_replicate_prediction_id?: string
+            }
         Returns: boolean
       }
       update_user_approval: {
