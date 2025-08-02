@@ -13145,6 +13145,24 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_t3d_jobs: {
+        Args: { p_user_id: string }
+        Returns: {
+          id: string
+          user_id: string
+          prompt_id: string
+          status: string
+          progress: number
+          result_url: string
+          error_message: string
+          created_at: string
+          updated_at: string
+          job_id: string
+          service_name: string
+          model_name: string
+          parameters: Json
+        }[]
+      }
       get_t3d_prompt_by_id: {
         Args: { p_prompt_id: string }
         Returns: {
