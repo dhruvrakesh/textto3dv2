@@ -12735,45 +12735,32 @@ export type Database = {
         }[]
       }
       create_t3d_job: {
-        Args: {
-          p_prompt_id: string
-          p_user_id: string
-          p_status: string
-          p_progress: number
-          p_job_type: string
-          p_selected_model: string
-          p_selected_service: string
-          p_quality_level: string
-        }
-        Returns: {
-          id: string
-          prompt_id: string
-          user_id: string
-          status: string
-          progress: number
-          job_type: string
-          selected_model: string
-          selected_service: string
-          quality_level: string
-          created_at: string
-          updated_at: string
-          started_at: string
-          completed_at: string
-          error_message: string
-          result_url: string
-          meshy_task_id: string
-        }[]
+        Args:
+          | {
+              p_prompt_id: string
+              p_user_id: string
+              p_status: string
+              p_progress: number
+              p_job_type: string
+              p_selected_model: string
+              p_selected_service: string
+              p_quality_level: string
+            }
+          | {
+              p_prompt_id: string
+              p_user_id: string
+              p_status: string
+              p_progress: number
+              p_job_type: string
+              p_selected_model?: string
+              p_selected_service?: string
+              p_quality_level?: string
+            }
+        Returns: Json
       }
       create_t3d_prompt: {
         Args: { p_user_id: string; p_version: number; p_json: Json }
-        Returns: {
-          id: string
-          user_id: string
-          version: number
-          prompt_json: Json
-          created_at: string
-          updated_at: string
-        }[]
+        Returns: Json
       }
       delete_deck_viscosity_reading: {
         Args: { p_reading_id: string }
@@ -13728,13 +13715,21 @@ export type Database = {
         Returns: undefined
       }
       update_t3d_job: {
-        Args: {
-          p_job_id: string
-          p_status?: string
-          p_progress?: number
-          p_result_url?: string
-          p_error_message?: string
-        }
+        Args:
+          | {
+              p_job_id: string
+              p_status?: string
+              p_progress?: number
+              p_result_url?: string
+              p_error_message?: string
+            }
+          | {
+              p_job_id: string
+              p_status?: string
+              p_progress?: number
+              p_result_url?: string
+              p_error_message?: string
+            }
         Returns: undefined
       }
       update_user_approval: {

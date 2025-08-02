@@ -7,6 +7,7 @@ serve(async (req) => {
   console.log('=== PROCESS-PROMPT FUNCTION STARTED ===');
   console.log('Request method:', req.method);
   console.log('Request URL:', req.url);
+  console.log('Timestamp:', new Date().toISOString());
   
   if (req.method === 'OPTIONS') {
     console.log('Handling CORS preflight');
@@ -14,11 +15,23 @@ serve(async (req) => {
   }
 
   try {
+    // Verify environment variables first
+    console.log('=== ENVIRONMENT CHECK ===');
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY');
+    
+    console.log('SUPABASE_URL exists:', !!supabaseUrl);
+    console.log('SUPABASE_SERVICE_ROLE_KEY exists:', !!serviceRoleKey);
+    console.log('SUPABASE_ANON_KEY exists:', !!anonKey);
+    
+    if (!supabaseUrl || !serviceRoleKey || !anonKey) {
+      console.error('Missing required environment variables');
+      return createCorsErrorResponse('Server configuration error', 500);
+    }
+
     console.log('Creating Supabase clients...');
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-    );
+    const supabaseClient = createClient(supabaseUrl, serviceRoleKey);
     console.log('Service role client created successfully');
 
     // Get the authenticated user from the request
