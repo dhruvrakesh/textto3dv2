@@ -117,7 +117,9 @@ serve(async (req) => {
         p_selected_model: modelPreferences.selected_model,
         p_selected_service: modelPreferences.selected_service,
         p_quality_level: modelPreferences.quality_level,
-        p_job_type: 'generation'
+        p_status: 'queued',
+        p_progress: 0,
+        p_job_type: '3d_model_generation'
       })
       .single();
 
@@ -175,7 +177,8 @@ serve(async (req) => {
           .rpc('update_t3d_job', {
             p_job_id: job.id,
             p_status: 'error',
-            p_error_message: generateError.message || 'Failed to start 3D generation'
+            p_progress: null,
+            p_result_url: generateError.message || 'Failed to start 3D generation'
           });
 
         return createCorsErrorResponse(`Failed to start 3D generation: ${generateError.message}`, 500);
@@ -190,7 +193,8 @@ serve(async (req) => {
         .rpc('update_t3d_job', {
           p_job_id: job.id,
           p_status: 'error',
-          p_error_message: error.message || 'Failed to start 3D generation'
+          p_progress: null,
+          p_result_url: error.message || 'Failed to start 3D generation'
         });
 
       return createCorsErrorResponse(`Failed to start 3D generation: ${error.message}`, 500);

@@ -59,7 +59,8 @@ serve(async (req) => {
       .rpc('update_t3d_job', {
         p_job_id: jobId,
         p_status: 'running',
-        p_progress: 10
+        p_progress: 10,
+        p_result_url: null
       });
 
     console.log('RPC update_t3d_job response data:', updateData);
@@ -114,7 +115,9 @@ serve(async (req) => {
       console.log('Updating progress to 30...');
       const { data: progressData, error: progressError } = await supabaseClient.rpc('update_t3d_job', {
         p_job_id: jobId,
-        p_progress: 30
+        p_progress: 30,
+        p_status: null,
+        p_result_url: null
       });
       
       if (progressError) {
@@ -152,7 +155,9 @@ serve(async (req) => {
       console.log('Updating progress to 80...');
       const { data: progress80Data, error: progress80Error } = await supabaseClient.rpc('update_t3d_job', {
         p_job_id: jobId,
-        p_progress: 80
+        p_status: null,
+        p_progress: 80,
+        p_result_url: null
       });
       
       if (progress80Error) {
@@ -178,8 +183,7 @@ serve(async (req) => {
           p_job_id: jobId,
           p_status: 'done',
           p_progress: 100,
-          p_result_url: resultUrl,
-          p_error_message: null
+          p_result_url: resultUrl
         });
 
       if (completeError) {
@@ -214,7 +218,7 @@ serve(async (req) => {
             p_job_id: jobId,
             p_status: 'error',
             p_progress: 0,
-            p_error_message: `Hugging Face generation failed: ${hfError.message}`
+            p_result_url: `Hugging Face generation failed: ${hfError.message}`
           });
           
         if (errorUpdateError) {
@@ -247,7 +251,9 @@ serve(async (req) => {
         console.log('Updating progress to 40...');
         const { data: progress40Data, error: progress40Error } = await supabaseClient.rpc('update_t3d_job', {
           p_job_id: jobId,
-          p_progress: 40
+          p_status: null,
+          p_progress: 40,
+          p_result_url: null
         });
         
         if (progress40Error) {
@@ -319,7 +325,9 @@ serve(async (req) => {
         // Update progress
         await supabaseClient.rpc('update_t3d_job', {
           p_job_id: jobId,
-          p_progress: 60
+          p_status: null,
+          p_progress: 60,
+          p_result_url: null
         });
 
         console.log('Meshy task created with webhook, job will complete automatically');
@@ -361,7 +369,9 @@ serve(async (req) => {
           let progress = 60 + (attempts * 1);
           await supabaseClient.rpc('update_t3d_job', {
             p_job_id: jobId,
-            p_progress: Math.min(progress, 95)
+            p_status: null,
+            p_progress: Math.min(progress, 95),
+            p_result_url: null
           });
 
           if (status.status === 'SUCCEEDED') {
@@ -373,8 +383,7 @@ serve(async (req) => {
                 p_job_id: jobId,
                 p_status: 'done',
                 p_progress: 100,
-                p_result_url: status.model_urls?.glb || status.model_urls?.obj || status.thumbnail_url,
-                p_error_message: null
+                p_result_url: status.model_urls?.glb || status.model_urls?.obj || status.thumbnail_url
               });
 
             if (completeError) {
@@ -418,7 +427,7 @@ serve(async (req) => {
               p_job_id: jobId,
               p_status: 'error',
               p_progress: 0,
-              p_error_message: `Meshy generation failed: ${meshyError.message}`
+              p_result_url: `Meshy generation failed: ${meshyError.message}`
             });
             
           if (meshyErrorUpdateError) {
@@ -437,7 +446,7 @@ serve(async (req) => {
             p_job_id: jobId,
             p_status: 'error',
             p_progress: 0,
-            p_error_message: `All available services failed. Service preference: ${selectedService}. Last error: ${meshyError.message}`
+            p_result_url: `All available services failed. Service preference: ${selectedService}. Last error: ${meshyError.message}`
           });
           
         if (allFailedUpdateError) {
@@ -456,7 +465,7 @@ serve(async (req) => {
         p_job_id: jobId,
         p_status: 'error',
         p_progress: 0,
-        p_error_message: `No 3D generation services available for the selected preference: ${selectedService}`
+        p_result_url: `No 3D generation services available for the selected preference: ${selectedService}`
       });
 
     return createCorsErrorResponse(`No 3D generation services available for the selected preference: ${selectedService}`, 500);
