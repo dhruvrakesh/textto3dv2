@@ -12739,9 +12739,10 @@ export type Database = {
           | {
               p_prompt_id: string
               p_user_id: string
-              p_selected_model: string
-              p_selected_service: string
-              p_quality_level: string
+              p_job_type?: string
+              p_selected_model?: string
+              p_selected_service?: string
+              p_quality_level?: string
             }
           | {
               p_prompt_id: string
@@ -12763,7 +12764,7 @@ export type Database = {
               p_selected_service?: string
               p_quality_level?: string
             }
-        Returns: Json
+        Returns: string
       }
       create_t3d_prompt: {
         Args: { p_user_id: string; p_version: number; p_json: Json }
@@ -13155,18 +13156,32 @@ export type Database = {
         Returns: {
           id: string
           user_id: string
-          version: number
+          space: string
+          style: string
+          space_type: string
+          description: string
+          color_scheme: string[]
+          dimensions_mm: Json
+          mood_keywords: string[]
+          uploaded_refs: string[]
           prompt_json: Json
           created_at: string
           updated_at: string
         }[]
       }
       get_t3d_prompts: {
-        Args: { prompt_ids: string[] }
+        Args: { p_user_id: string } | { prompt_ids: string[] }
         Returns: {
           id: string
           user_id: string
-          version: number
+          space: string
+          style: string
+          space_type: string
+          description: string
+          color_scheme: string[]
+          dimensions_mm: Json
+          mood_keywords: string[]
+          uploaded_refs: string[]
           prompt_json: Json
           created_at: string
           updated_at: string
@@ -13736,7 +13751,7 @@ export type Database = {
             }
           | {
               p_job_id: string
-              p_status?: string
+              p_status: string
               p_progress?: number
               p_result_url?: string
               p_error_message?: string
@@ -13748,7 +13763,7 @@ export type Database = {
               p_result_url?: string
               p_error_message?: string
             }
-        Returns: undefined
+        Returns: boolean
       }
       update_user_approval: {
         Args: { user_id: string; approved: boolean; admin_notes?: string }
