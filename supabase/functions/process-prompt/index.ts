@@ -114,9 +114,6 @@ serve(async (req) => {
       .rpc('create_t3d_job', {
         p_prompt_id: prompt.id,
         p_user_id: userId,
-        p_status: 'queued',
-        p_progress: 0,
-        p_job_type: '3d_model_generation',
         p_selected_model: modelPreferences.selected_model,
         p_selected_service: modelPreferences.selected_service,
         p_quality_level: modelPreferences.quality_level

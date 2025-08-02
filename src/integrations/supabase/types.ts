@@ -12739,6 +12739,13 @@ export type Database = {
           | {
               p_prompt_id: string
               p_user_id: string
+              p_selected_model: string
+              p_selected_service: string
+              p_quality_level: string
+            }
+          | {
+              p_prompt_id: string
+              p_user_id: string
               p_status: string
               p_progress: number
               p_job_type: string
@@ -13138,6 +13145,9 @@ export type Database = {
           created_at: string
           updated_at: string
           replicate_prediction_id: string
+          selected_model: string
+          selected_service: string
+          quality_level: string
         }[]
       }
       get_t3d_prompt_by_id: {
@@ -13716,6 +13726,14 @@ export type Database = {
       }
       update_t3d_job: {
         Args:
+          | {
+              p_job_id: string
+              p_status: string
+              p_progress?: number
+              p_error_message?: string
+              p_result_url?: string
+              p_replicate_prediction_id?: string
+            }
           | {
               p_job_id: string
               p_status?: string
