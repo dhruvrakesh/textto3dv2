@@ -116,7 +116,8 @@ serve(async (req) => {
         p_user_id: userId,
         p_selected_model: modelPreferences.selected_model,
         p_selected_service: modelPreferences.selected_service,
-        p_quality_level: modelPreferences.quality_level
+        p_quality_level: modelPreferences.quality_level,
+        p_job_type: 'generation'
       })
       .single();
 
