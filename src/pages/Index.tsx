@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import PromptWizard from "@/components/PromptWizard";
 import ModelViewer from "@/components/ModelViewer";
 import GenerationHistory from "@/components/GenerationHistory";
+import TestJobTrigger from "@/components/TestJobTrigger";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const Index = () => {
@@ -170,6 +171,9 @@ const Index = () => {
                 </div>
               )}
             </div>
+
+            {/* Test Job Trigger */}
+            <TestJobTrigger />
 
             {/* Generation History */}
             <ErrorBoundary>
