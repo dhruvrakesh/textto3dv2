@@ -12739,10 +12739,10 @@ export type Database = {
           | {
               p_prompt_id: string
               p_user_id: string
-              p_job_type?: string
-              p_selected_model?: string
-              p_selected_service?: string
-              p_quality_level?: string
+              p_selected_model: string
+              p_selected_service: string
+              p_quality_level: string
+              p_job_type: string
             }
           | {
               p_prompt_id: string
@@ -12764,7 +12764,20 @@ export type Database = {
               p_selected_service?: string
               p_quality_level?: string
             }
-        Returns: string
+        Returns: {
+          id: string
+          prompt_id: string
+          user_id: string
+          status: string
+          progress: number
+          result_url: string
+          created_at: string
+          updated_at: string
+          selected_model: string
+          selected_service: string
+          quality_level: string
+          job_type: string
+        }[]
       }
       create_t3d_prompt: {
         Args: { p_user_id: string; p_version: number; p_json: Json }
@@ -13130,25 +13143,6 @@ export type Database = {
           error_message: string
           created_at: string
           updated_at: string
-        }[]
-      }
-      get_t3d_jobs: {
-        Args: { p_user_id: string }
-        Returns: {
-          id: string
-          prompt_id: string
-          user_id: string
-          status: string
-          progress: number
-          result_url: string
-          created_at: string
-          updated_at: string
-          selected_model: string
-          selected_service: string
-          quality_level: string
-          job_type: string
-          prompt_text: string
-          prompt_data: Json
         }[]
       }
       get_t3d_prompt_by_id: {
@@ -13744,17 +13738,17 @@ export type Database = {
           | {
               p_job_id: string
               p_status: string
-              p_progress?: number
-              p_error_message?: string
+              p_progress: number
               p_result_url?: string
-              p_replicate_prediction_id?: string
+              p_job_type?: string
             }
           | {
               p_job_id: string
               p_status: string
               p_progress?: number
-              p_result_url?: string
               p_error_message?: string
+              p_result_url?: string
+              p_replicate_prediction_id?: string
             }
           | {
               p_job_id: string
