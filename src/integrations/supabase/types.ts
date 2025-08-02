@@ -12751,11 +12751,17 @@ export type Database = {
           user_id: string
           status: string
           progress: number
-          result_url: string
           job_type: string
-          error_message: string
+          selected_model: string
+          selected_service: string
+          quality_level: string
           created_at: string
           updated_at: string
+          started_at: string
+          completed_at: string
+          error_message: string
+          result_url: string
+          meshy_task_id: string
         }[]
       }
       create_t3d_prompt: {
